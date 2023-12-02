@@ -9,10 +9,9 @@
   </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="AdventOfCodeSupport" Version="2.3.0" />
+      <PackageReference Include="AdventOfCodeSupport" Version="2.3.2" />
       <PackageReference Include="Farkle" Version="6.5.1" />
       <PackageReference Include="Farkle.Tools.MSBuild" Version="6.5.1" />
-      <PackageReference Include="xunit" Version="2.6.2" />
     </ItemGroup>
 
     <ItemGroup>
