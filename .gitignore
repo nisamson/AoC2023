@@ -1,0 +1,7 @@
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+AoC2023/Saved.json
+AoC2023/Inputs/
