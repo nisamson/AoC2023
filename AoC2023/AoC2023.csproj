@@ -8,6 +8,10 @@
       <UserSecretsId>77a428ac-67e2-4da2-8bf8-6a777dbf2d74</UserSecretsId>
   </PropertyGroup>
 
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <DebugSymbols>true</DebugSymbols>
+    </PropertyGroup>
+
     <ItemGroup>
       <PackageReference Include="AdventOfCodeSupport" Version="2.3.2" />
       <PackageReference Include="Farkle" Version="6.5.1" />
