@@ -1,5 +1,5 @@
 ﻿#region license
-// AoC2023 - AoC2023 - IAdvent.cs
+// AoC2023 - AoC2023 - Adventer.cs
 // Copyright (C) 2023 Nicholas
 // 
 // This program is free software: you can redistribute it and/or modify
@@ -16,10 +16,20 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #endregion
 
+using AdventOfCodeSupport;
+
 namespace AoC2023;
 
-public interface IAdvent {
-    object DoPart1();
-    object DoPart2();
-    void DoLoad();
+public abstract class Adventer: AdventBase, IAdvent {
+    public object DoPart1() {
+        return InternalPart1();
+    }
+
+    public object DoPart2() {
+        return InternalPart2();
+    }
+
+    public void DoLoad() {
+        InternalOnLoad();
+    }
 }

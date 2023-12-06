@@ -18,10 +18,12 @@
 
 #endregion
 
-using System.Collections.Immutable;
-using AdventOfCodeSupport;
+    using System.Collections.Immutable;
+    using System.Text.RegularExpressions;
+    using AdventOfCodeSupport;
     using Farkle;
     using Farkle.Builder;
+    using Regex = Farkle.Builder.Regex;
 
     namespace AoC2023._2023;
 
@@ -64,7 +66,7 @@ using AdventOfCodeSupport;
         }
     }
 
-    static class ScratchLang {
+    static partial class ScratchLang {
         public static readonly PrecompilableDesigntimeFarkle<ScratchGame> DesignTime;
         public static readonly RuntimeFarkle<ScratchGame> Runtime;
         public static readonly PrecompilableDesigntimeFarkle<List<ScratchGame>> DesignTimeArray;
@@ -80,15 +82,33 @@ using AdventOfCodeSupport;
                     .Extend(number.Many<int, List<int>>())
                     .Append(Terminal.Literal("|"))
                     .Extend(number.Many<int, List<int>>())
-                    .Finish(
-                        (i, winners, present) => new ScratchGame(i, winners, present)
-                    )
+                    .Finish((i, winners, present) => new ScratchGame(i, winners, present))
             );
             DesignTime = card.MarkForPrecompile();
             Runtime = DesignTime.Build();
             var multiple = card.Many<ScratchGame, List<ScratchGame>>();
             DesignTimeArray = multiple.MarkForPrecompile();
             RuntimeArray = DesignTimeArray.Build();
+        }
+
+        [GeneratedRegex(@"Card +(?<id>\d+): +(?<winners>(\d+ +)+)\| +(?<cards>(\d+ +)+)")]
+        private static partial System.Text.RegularExpressions.Regex GameRegex();
+
+        public static ScratchGame ParseOne(string line) {
+            var matches = GameRegex().Match(line);
+            if (!matches.Success) {
+                throw new ArgumentException($"Invalid game, {line}");
+            }
+
+            var id = int.Parse(matches.Groups["id"].Value);
+            var winners = matches.Groups["winners"]
+                .Value
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(int.Parse);
+            var cards = matches.Groups["cards"]
+                .Value.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(int.Parse);
+            return new ScratchGame(id, cards, winners);
         }
     }
 
@@ -108,6 +128,7 @@ using AdventOfCodeSupport;
         }
 
         protected override void InternalOnLoad() {
+            games.Clear();
             var result = ScratchLang.RuntimeArray.Parse(Input.Text);
             if (result.IsError) {
                 throw new ArgumentException($"Invalid games, {result.ErrorValue}");
@@ -146,6 +167,7 @@ using AdventOfCodeSupport;
                 for (var i = startIndex + count - 1; i >= startIndex; i--) {
                     total += ScoreGame(i);
                 }
+
                 return total;
             }
 
@@ -166,5 +188,9 @@ using AdventOfCodeSupport;
 
         public object DoPart2() {
             return InternalPart2();
+        }
+
+        public void DoLoad() {
+            
         }
     }

@@ -22,7 +22,7 @@ using AdventOfCodeSupport;
 
 namespace AoC2023._2023; 
 
-public partial class Day01 : AdventBase {
+public partial class Day01 : Adventer {
     protected override object InternalPart1() {
         return Input.Lines.Select(x => {
             var digits = x.Where(char.IsDigit).ToArray();
@@ -71,5 +71,13 @@ public partial class Day01 : AdventBase {
             return o;
             })
         .Sum();
+    }
+
+    public void PrintNumbers() {
+        foreach (var l in Input.Lines) {
+            var digits = GetDigits(l).ToArray();
+            var o = digits[0] * 10 + digits[^1];
+            Console.WriteLine($"{l} -> {o}");
+        }
     }
 }

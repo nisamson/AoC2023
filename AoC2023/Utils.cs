@@ -1,5 +1,5 @@
 ﻿#region license
-// AoC2023 - AoC2023 - IAdvent.cs
+// AoC2023 - AoC2023 - Utils.cs
 // Copyright (C) 2023 Nicholas
 // 
 // This program is free software: you can redistribute it and/or modify
@@ -16,10 +16,26 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #endregion
 
+using System.Numerics;
+
 namespace AoC2023;
 
-public interface IAdvent {
-    object DoPart1();
-    object DoPart2();
-    void DoLoad();
+public static class IterUtils {
+    public static TNumeric Product<TNumeric>(this IEnumerable<TNumeric> source) where TNumeric: INumber<TNumeric> {
+        return source.Aggregate(TNumeric.One, (current, item) => current * item);
+    }
+    
+    public static IEnumerable<long> Range(long start, long count) {
+        var max = start + count - 1;
+        switch (count) {
+            case < 0:
+                throw new ArgumentOutOfRangeException(nameof(count));
+            case 0:
+                yield break;
+        }
+
+        for (var i = start; i <= max; i++) {
+            yield return i;
+        }
+    }
 }

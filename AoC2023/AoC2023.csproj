@@ -11,6 +11,10 @@
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
       <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
+    
+    <PropertyGroup>
+        <FarkleGenerateHtml>true</FarkleGenerateHtml>
+    </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="AdventOfCodeSupport" Version="2.3.2" />
