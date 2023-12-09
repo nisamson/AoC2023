@@ -3,6 +3,7 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
+        <LangVersion>12</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
       <UserSecretsId>77a428ac-67e2-4da2-8bf8-6a777dbf2d74</UserSecretsId>
@@ -20,6 +21,7 @@
       <PackageReference Include="AdventOfCodeSupport" Version="2.3.2" />
       <PackageReference Include="Farkle" Version="6.5.1" />
       <PackageReference Include="Farkle.Tools.MSBuild" Version="6.5.1" />
+      <PackageReference Include="Rationals" Version="2.3.0" />
     </ItemGroup>
 
     <ItemGroup>
