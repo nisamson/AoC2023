@@ -9,10 +9,10 @@ await day.DownloadInputAsync();
 
 // day.SetTestInput(day.Bag["test"]);
 // await day.SubmitPart1Async();
-// await day.SubmitPart2Async();
+await day.SubmitPart2Async();
 // day.Part1();
 await day.CheckPart1Async();
-await day.CheckPart2Async();
+// await day.CheckPart2Async();
 // if (day is IAdvent advent) {
 //     // for (var i = 0; i < 100000; i++) {
 //     //     advent.DoPart1();
