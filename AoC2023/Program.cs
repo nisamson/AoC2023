@@ -8,7 +8,7 @@ var day = solutions.GetMostRecentDay();
 await day.DownloadInputAsync();
 
 // day.SetTestInput(day.Bag["test"]);
-// await day.SubmitPart1Async();
+await day.SubmitPart1Async();
 await day.SubmitPart2Async();
 // day.Part1();
 await day.CheckPart1Async();

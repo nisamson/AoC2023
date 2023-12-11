@@ -25,19 +25,19 @@ using QuikGraph.Algorithms.Search;
 
 namespace AoC2023._2023;
 
-internal enum PipeDirection {
+public enum PipeDirection {
     Up,
     Down,
     Left,
     Right
 }
 
-internal readonly record struct Vertex(int X, int Y) {
+public readonly record struct Vertex(long X, long Y) {
     public override string ToString() {
         return $"({X}, {Y})";
     }
     
-    public void Deconstruct(out int x, out int y) {
+    public void Deconstruct(out long x, out long y) {
         x = X;
         y = Y;
     }
@@ -48,12 +48,16 @@ internal readonly record struct Vertex(int X, int Y) {
     
     public Vertex GetNeighbor(PipeDirection direction) {
         return direction switch {
-            PipeDirection.Up => new Vertex(X, Y - 1),
-            PipeDirection.Down => new Vertex(X, Y + 1),
-            PipeDirection.Left => new Vertex(X - 1, Y),
+            PipeDirection.Up    => new Vertex(X, Y - 1),
+            PipeDirection.Down  => new Vertex(X, Y + 1),
+            PipeDirection.Left  => new Vertex(X - 1, Y),
             PipeDirection.Right => new Vertex(X + 1, Y),
-            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction")
+            _                   => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction")
         };
+    }
+    
+    public long ManhattanDistanceTo(Vertex other) {
+        return Math.Abs(X - other.X) + Math.Abs(Y - other.Y);
     }
 }
 
@@ -61,7 +65,7 @@ class PipeGrid {
     public Vertex Start { get; }
     
     public int VertexToCoords(Vertex vertex) {
-        return vertex.Y * Height + vertex.X;
+        return (int) (vertex.Y * Height + vertex.X);
     }
 
     public int Height { get; }
