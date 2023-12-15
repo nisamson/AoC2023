@@ -1,5 +1,5 @@
 ﻿#region license
-// AoC2023 - AoC2023 - Day03.cs
+// AoC2023 - AoC2023 - Day13.cs
 // Copyright (C) 2023 Nicholas
 // 
 // This program is free software: you can redistribute it and/or modify
@@ -16,44 +16,29 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #endregion
 
-using AdventOfCodeSupport;
-
 namespace AoC2023._2023;
 
-using Vertex = Vertex<int>;
-
-public class Day03 : Adventer {
-
-    public struct Number {
-        public int Value { get; set; }
-        public Vertex Coords { get; set; }
-        public long X => Coords.X;
-        public long Y => Coords.Y;
-
-        public Number(int value, int x, int y) {
-            Value = value;
-            
-            
-        }
-
-        public override string ToString() {
-            return $"{Value} ({X}, {Y})";
-        }
-
-        public IEnumerable<int> DecimalDigits() {
-            var v = Value;
-            while (v > 0) {
-                yield return v % 10;
-                v /= 10;
+public class Day13: Adventer {
+    public class Problem {
+        private List<Grid<char>> grids = [];
+        
+        public Problem(string input) {
+            foreach (var grp in input.Split("\n\n", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)) {
+                var lines = grp.Split("\n", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                var grid = new Grid<char>(lines[0].Length, lines.Length, lines.SelectMany(l => l.AsEnumerable()));
+                grids.Add(grid);
             }
         }
 
-        public int DecimalLength => (int) Math.Log10(Value) + 1;
-    }
-    public class Problem {
-        
+        public int HorizontalReflections(Grid<char> grid) {
+            throw new NotImplementedException();
+        }
     }
     
+    protected override void InternalOnLoad() {
+        base.InternalOnLoad();
+    }
+
     protected override object InternalPart1() {
         throw new NotImplementedException();
     }

@@ -22,44 +22,11 @@ using NetTopologySuite.Geometries;
 using QuikGraph;
 using QuikGraph.Algorithms;
 using QuikGraph.Algorithms.Search;
+using AoC2023;
 
 namespace AoC2023._2023;
 
-public enum PipeDirection {
-    Up,
-    Down,
-    Left,
-    Right
-}
-
-public readonly record struct Vertex(long X, long Y) {
-    public override string ToString() {
-        return $"({X}, {Y})";
-    }
-    
-    public void Deconstruct(out long x, out long y) {
-        x = X;
-        y = Y;
-    }
-    
-    public bool ExistsInGrid(int width, int height) {
-        return X >= 0 && X < width && Y >= 0 && Y < height;
-    }
-    
-    public Vertex GetNeighbor(PipeDirection direction) {
-        return direction switch {
-            PipeDirection.Up    => new Vertex(X, Y - 1),
-            PipeDirection.Down  => new Vertex(X, Y + 1),
-            PipeDirection.Left  => new Vertex(X - 1, Y),
-            PipeDirection.Right => new Vertex(X + 1, Y),
-            _                   => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction")
-        };
-    }
-    
-    public long ManhattanDistanceTo(Vertex other) {
-        return Math.Abs(X - other.X) + Math.Abs(Y - other.Y);
-    }
-}
+using Vertex = Vertex<int>;
 
 class PipeGrid {
     public Vertex Start { get; }
@@ -102,25 +69,25 @@ class PipeGrid {
         }
     }
 
-    public static IEnumerable<PipeDirection> ConnectedDirections(char c) {
+    public static IEnumerable<AoC2023.Direction> ConnectedDirections(char c) {
         // Up
         if (c is '|' or 'L' or 'J') {
-            yield return PipeDirection.Up;
+            yield return AoC2023.Direction.Up;
         }
         
         // Down
         if (c is '|' or 'F' or '7') {
-            yield return PipeDirection.Down;
+            yield return AoC2023.Direction.Down;
         }
         
         // Left
         if (c is '-' or 'J' or '7') {
-            yield return PipeDirection.Left;
+            yield return AoC2023.Direction.Left;
         }
         
         // Right
         if (c is '-' or 'L' or 'F') {
-            yield return PipeDirection.Right;
+            yield return AoC2023.Direction.Right;
         }
     }
 

@@ -23,6 +23,7 @@ using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Single;
 
 namespace AoC2023._2023;
+using Vertex = Vertex<long>;
 
 public class Day11 : Adventer {
 
