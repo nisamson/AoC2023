@@ -18,11 +18,12 @@
 
 #endregion
 
-    using Farkle;
-    using Farkle.Builder;
+using Farkle;
+using Farkle.Builder;
 
-    namespace AoC2023._2023;
+namespace AoC2023._2023;
 
+public class Day08 : Adventer {
     internal enum Direction {
         Left,
         Right
@@ -36,7 +37,7 @@
                 _   => throw new ArgumentOutOfRangeException(nameof(input), input, "Invalid direction")
             };
         }
-        
+
         public static IEnumerable<Direction> ParseMany(string input) {
             return input.Select(Parse);
         }
@@ -55,11 +56,11 @@
 
         public string Left { get; } = Left;
         public string Right { get; } = Right;
-        
+
         public override string ToString() {
             return $"{Name} = ({Left}, {Right})";
         }
-        
+
         public static Node Parse(string s) {
             var parts = s.Split("=", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             var name = parts[0];
@@ -71,7 +72,7 @@
     internal class Day08Problem(IReadOnlyList<Direction> directions, IReadOnlyDictionary<string, Node> nodes) {
         private IReadOnlyList<Direction> Directions { get; } = directions;
         private IReadOnlyDictionary<string, Node> Nodes { get; } = nodes;
-        
+
         public static Day08Problem Parse(string[] input) {
             var nonEmpty = input.Where(s => !string.IsNullOrWhiteSpace(s));
             var directions = DirectionExtensions.ParseMany(input[0]).ToList();
@@ -153,7 +154,8 @@
         }
 
         static Day08Lang() {
-            var directionTerm = Terminal.Create("directionsToken", (_, data) => ParseDirections(data), Regex.FromRegexString("[LR]+")).Extended().AsIs();
+            var directionTerm = Terminal.Create("directionsToken", (_, data) => ParseDirections(data), Regex.FromRegexString("[LR]+"))
+                .Extended().AsIs();
 
             var nodeName = Terminal.Create("nodeName", (_, data) => new string(data), Regex.FromRegexString("[A-Z]{3}"));
             var directions = Nonterminal.Create(
@@ -176,9 +178,12 @@
             );
 
             var nodes = node.Many<Node, List<Node>>();
-            var problem = Nonterminal.Create("problem", directions.Extended().Extend(nodes).Finish(
-                (directions, nodes) => new Day08Problem(directions, nodes.ToDictionary(n => n.Name, IterUtils.Identity))
-            ));
+            var problem = Nonterminal.Create(
+                "problem",
+                directions.Extended().Extend(nodes).Finish(
+                    (directions, nodes) => new Day08Problem(directions, nodes.ToDictionary(n => n.Name, IterUtils.Identity))
+                )
+            );
             Designtime = problem
                 .CaseSensitive(true)
                 .MarkForPrecompile();
@@ -186,39 +191,38 @@
         }
     }
 
-    public class Day08 : Adventer {
-        public Day08() {
-            Bag["test"] = """
-                          LR
-                          
-                          HHA = (HHB, XXX)
-                          HHB = (XXX, HHZ)
-                          HHZ = (HHB, XXX)
-                          JJA = (JJB, XXX)
-                          JJB = (JJC, JJC)
-                          JJC = (JJZ, JJZ)
-                          JJZ = (JJB, JJB)
-                          XXX = (XXX, XXX)
-                          """;
-        }
-        
-        private Day08Problem problem;
+    public Day08() {
+        Bag["test"] = """
+                      LR
 
-        protected override void InternalOnLoad() {
-            // var res = Day08Lang.Runtime.Parse(Input.Text);
-            // if (res.IsOk) {
-            //     problem = res.ResultValue;
-            // } else {
-            //     throw new Exception(res.ErrorValue.ToString());
-            // }
-            problem = Day08Problem.Parse(Input.Lines);
-        }
-
-        protected override object InternalPart1() {
-            return problem.NavigatePart1();
-        }
-
-        protected override object InternalPart2() {
-            return problem.NavigatePart2();
-        }
+                      HHA = (HHB, XXX)
+                      HHB = (XXX, HHZ)
+                      HHZ = (HHB, XXX)
+                      JJA = (JJB, XXX)
+                      JJB = (JJC, JJC)
+                      JJC = (JJZ, JJZ)
+                      JJZ = (JJB, JJB)
+                      XXX = (XXX, XXX)
+                      """;
     }
+
+    private Day08Problem problem;
+
+    protected override void InternalOnLoad() {
+        // var res = Day08Lang.Runtime.Parse(Input.Text);
+        // if (res.IsOk) {
+        //     problem = res.ResultValue;
+        // } else {
+        //     throw new Exception(res.ErrorValue.ToString());
+        // }
+        problem = Day08Problem.Parse(Input.Lines);
+    }
+
+    protected override object InternalPart1() {
+        return problem.NavigatePart1();
+    }
+
+    protected override object InternalPart2() {
+        return problem.NavigatePart2();
+    }
+}

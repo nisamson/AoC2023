@@ -24,10 +24,32 @@ using AoC2023._2023;
 namespace AoC2023;
 
 public enum Direction {
-    Up,
-    Down,
-    Left,
-    Right
+    Up = 0,
+    Down = 1,
+    Left = 2,
+    Right = 3,
+}
+
+public static class DirectionExtensions {
+    public static char ToChar(this Direction direction) {
+        return direction switch {
+            Direction.Up    => '\u2191',
+            Direction.Down  => '\u2193',
+            Direction.Left  => '\u2190',
+            Direction.Right => '\u2192',
+            _                   => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction"),
+        };
+    }
+    
+    public static Vertex<TNumber> ToVertex<TNumber>(this Direction direction) where TNumber: INumber<TNumber> {
+        return direction switch {
+            Direction.Up    => new Vertex<TNumber>(TNumber.Zero, -TNumber.One),
+            Direction.Down  => new Vertex<TNumber>(TNumber.Zero, TNumber.One),
+            Direction.Left  => new Vertex<TNumber>(-TNumber.One, TNumber.Zero),
+            Direction.Right => new Vertex<TNumber>(TNumber.One, TNumber.Zero),
+            _                   => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction"),
+        };
+    }
 }
 
 public readonly record struct Vertex<TNumber>(TNumber X, TNumber Y) where TNumber: INumber<TNumber> {
@@ -38,6 +60,54 @@ public readonly record struct Vertex<TNumber>(TNumber X, TNumber Y) where TNumbe
     public void Deconstruct(out TNumber x, out TNumber y) {
         x = X;
         y = Y;
+    }
+    
+    public static implicit operator(TNumber, TNumber)(Vertex<TNumber> vertex) {
+        return (vertex.X, vertex.Y);
+    }
+    
+    public static implicit operator Vertex<TNumber>((TNumber, TNumber) tuple) {
+        return new(tuple.Item1, tuple.Item2);
+    }
+    
+    public static Vertex<TNumber> operator +(Vertex<TNumber> left, Vertex<TNumber> right) {
+        return new(left.X + right.X, left.Y + right.Y);
+    }
+    
+    public static Vertex<TNumber> operator -(Vertex<TNumber> left, Vertex<TNumber> right) {
+        return new(left.X - right.X, left.Y - right.Y);
+    }
+    
+    public static Vertex<TNumber> operator *(Vertex<TNumber> left, Vertex<TNumber> right) {
+        return new(left.X * right.X, left.Y * right.Y);
+    }
+    
+    public static Vertex<TNumber> operator /(Vertex<TNumber> left, Vertex<TNumber> right) {
+        return new(left.X / right.X, left.Y / right.Y);
+    }
+    
+    public static Vertex<TNumber> operator %(Vertex<TNumber> left, Vertex<TNumber> right) {
+        return new(left.X % right.X, left.Y % right.Y);
+    }
+    
+    public static Vertex<TNumber> operator +(Vertex<TNumber> left, TNumber right) {
+        return new(left.X + right, left.Y + right);
+    }
+    
+    public static Vertex<TNumber> operator -(Vertex<TNumber> left, TNumber right) {
+        return new(left.X - right, left.Y - right);
+    }
+    
+    public static Vertex<TNumber> operator *(Vertex<TNumber> left, TNumber right) {
+        return new(left.X * right, left.Y * right);
+    }
+    
+    public static Vertex<TNumber> operator /(Vertex<TNumber> left, TNumber right) {
+        return new(left.X / right, left.Y / right);
+    }
+    
+    public static Vertex<TNumber> operator %(Vertex<TNumber> left, TNumber right) {
+        return new(left.X % right, left.Y % right);
     }
     
     public bool ExistsInGrid<U>(U width, U height) where U: INumber<U> {
@@ -58,5 +128,29 @@ public readonly record struct Vertex<TNumber>(TNumber X, TNumber Y) where TNumbe
     
     public TNumber ManhattanDistanceTo(Vertex<TNumber> other) {
         return TNumber.Abs(X - other.X) + TNumber.Abs(Y - other.Y);
+    }
+    
+    public static IEnumerable<Vertex<TNumber>> TopEdgePoints(TNumber width) {
+        for (var x = TNumber.Zero; x < width; x++) {
+            yield return new Vertex<TNumber>(x, TNumber.Zero);
+        }
+    }
+    
+    public static IEnumerable<Vertex<TNumber>> BottomEdgePoints(TNumber width, TNumber height) {
+        for (var x = TNumber.Zero; x < width; x++) {
+            yield return new Vertex<TNumber>(x, height - TNumber.One);
+        }
+    }
+    
+    public static IEnumerable<Vertex<TNumber>> LeftEdgePoints(TNumber height) {
+        for (var y = TNumber.Zero; y < height; y++) {
+            yield return new Vertex<TNumber>(TNumber.Zero, y);
+        }
+    }
+    
+    public static IEnumerable<Vertex<TNumber>> RightEdgePoints(TNumber width, TNumber height) {
+        for (var y = TNumber.Zero; y < height; y++) {
+            yield return new Vertex<TNumber>(width - TNumber.One, y);
+        }
     }
 }

@@ -43,6 +43,34 @@ public static class IterUtils {
         return true;
     }
     
+    public static IEnumerable<T> Observe<T>(this IEnumerable<T> source, Action<T> action) {
+        foreach (var item in source) {
+            action(item);
+            yield return item;
+        }
+    }
+    
+    public static IEnumerable<T> Observe<T>(this IEnumerable<T> source, Action<T, int> action) {
+        var i = 0;
+        foreach (var item in source) {
+            action(item, i++);
+            yield return item;
+        }
+    }
+    
+    public static void Consume<T>(this IEnumerable<T> source, Action<T> action) {
+        foreach (var item in source) {
+            action(item);
+        }
+    }
+    
+    public static void Consume<T>(this IEnumerable<T> source, Action<T, int> action) {
+        var i = 0;
+        foreach (var item in source) {
+            action(item, i++);
+        }
+    }
+    
     public static TNumeric Product<TNumeric>(this IEnumerable<TNumeric> source) where TNumeric: INumber<TNumeric> {
         return source.Aggregate(TNumeric.One, (current, item) => current * item);
     }
@@ -191,6 +219,17 @@ public readonly struct StrideSpan<TItem>: IEnumerable<TItem> {
         for (var i = 0; i < count; i++) {
             yield return this[i];
         }
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() {
+        return GetEnumerator();
+    }
+}
+
+public readonly struct SingletonEnumerable<T>(T item) : IEnumerable<T>
+    where T : notnull {
+    public IEnumerator<T> GetEnumerator() {
+        yield return item;
     }
 
     IEnumerator IEnumerable.GetEnumerator() {
