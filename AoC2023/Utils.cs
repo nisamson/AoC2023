@@ -113,6 +113,10 @@ public static class IterUtils {
             yield return Splitter(source);
         }
     }
+    
+    public static IEnumerable<T> Once<T>(this T item) {
+        yield return item;
+    }
 }
 
 public static class MathUtils {

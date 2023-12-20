@@ -20,6 +20,7 @@
 
 using System.Numerics;
 using AoC2023._2023;
+using NetTopologySuite.Geometries;
 
 namespace AoC2023;
 
@@ -50,12 +51,25 @@ public static class DirectionExtensions {
             _                   => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction"),
         };
     }
+    
+    public static Direction ParseRLUD(char c) {
+        return c switch {
+            'R' => Direction.Right,
+            'L' => Direction.Left,
+            'U' => Direction.Up,
+            'D' => Direction.Down,
+            _   => throw new ArgumentOutOfRangeException(nameof(c), c, "Invalid direction"),
+        };
+    }
 }
 
 public readonly record struct Vertex<TNumber>(TNumber X, TNumber Y) where TNumber: INumber<TNumber> {
     public override string ToString() {
         return $"({X}, {Y})";
     }
+    
+    public static readonly Vertex<TNumber> Zero = new(TNumber.Zero, TNumber.Zero);
+    public static readonly Vertex<TNumber> One = new(TNumber.One, TNumber.One);
     
     public void Deconstruct(out TNumber x, out TNumber y) {
         x = X;
@@ -152,5 +166,21 @@ public readonly record struct Vertex<TNumber>(TNumber X, TNumber Y) where TNumbe
         for (var y = TNumber.Zero; y < height; y++) {
             yield return new Vertex<TNumber>(width - TNumber.One, y);
         }
+    }
+    
+   
+    public Vertex<UNumber> Convert<UNumber>() where UNumber: INumber<UNumber> {
+        return new(UNumber.CreateChecked(X), UNumber.CreateChecked(Y));
+    }
+    
+    public static implicit operator Coordinate(Vertex<TNumber> vertex) {
+        return new Coordinate(double.CreateChecked(vertex.X), double.CreateChecked(vertex.Y));
+    }
+    
+    public IEnumerable<Vertex<TNumber>> GetNeighbors() {
+        yield return GetNeighbor(Direction.Up);
+        yield return GetNeighbor(Direction.Down);
+        yield return GetNeighbor(Direction.Left);
+        yield return GetNeighbor(Direction.Right);
     }
 }
