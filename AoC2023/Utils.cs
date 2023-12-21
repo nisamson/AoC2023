@@ -75,6 +75,10 @@ public static class IterUtils {
         return source.Aggregate(TNumeric.One, (current, item) => current * item);
     }
     
+    public static TNumeric Product<TSource, TNumeric>(this IEnumerable<TSource> source, Func<TSource, TNumeric> selector) where TNumeric: INumber<TNumeric> {
+        return source.Select(selector).Product();
+    }
+    
     public static IEnumerable<long> Range(long start, long count) {
         var max = start + count - 1;
         switch (count) {
