@@ -19,10 +19,9 @@
 #endregion
 
 using System.Numerics;
-using AoC2023._2023;
 using NetTopologySuite.Geometries;
 
-namespace AoC2023;
+namespace AoC.Support;
 
 public enum Direction {
     Up = 0,
@@ -82,6 +81,24 @@ public readonly record struct Vertex<TNumber>(TNumber X, TNumber Y) where TNumbe
     
     public static implicit operator Vertex<TNumber>((TNumber, TNumber) tuple) {
         return new(tuple.Item1, tuple.Item2);
+    }
+    
+    // Y + X * height
+    public TNumber ColumnMajorIndex(TNumber height) {
+        return Y + X * height;
+    }
+    
+    // Y * width + X
+    public TNumber RowMajorIndex(TNumber width) {
+        return X + Y * width;
+    }
+    
+    public static Vertex<TNumber> FromColumnMajorIndex(TNumber index, TNumber height) {
+        return new(index / height, index % height);
+    }
+    
+    public static Vertex<TNumber> FromRowMajorIndex(TNumber index, TNumber width) {
+        return new(index % width, index / width);
     }
     
     public static Vertex<TNumber> operator +(Vertex<TNumber> left, Vertex<TNumber> right) {
@@ -182,5 +199,26 @@ public readonly record struct Vertex<TNumber>(TNumber X, TNumber Y) where TNumbe
         yield return GetNeighbor(Direction.Down);
         yield return GetNeighbor(Direction.Left);
         yield return GetNeighbor(Direction.Right);
+    }
+    
+    public static TNumber RowMajorIndex(Vertex<TNumber> v, TNumber width) {
+        return v.RowMajorIndex(width);
+    }
+    
+    public static TNumber ColumnMajorIndex(Vertex<TNumber> v, TNumber height) {
+        return v.ColumnMajorIndex(height);
+    }
+    
+    public record RowMajorIndexComparer(TNumber Rows) : IComparer<Vertex<TNumber>> {
+        public int Compare(Vertex<TNumber> x, Vertex<TNumber> y) {
+            
+            return x.RowMajorIndex(Rows).CompareTo(y.RowMajorIndex(Rows));
+        }
+    }
+    
+    public record ColumnMajorIndexComparer(TNumber Columns) : IComparer<Vertex<TNumber>> {
+        public int Compare(Vertex<TNumber> x, Vertex<TNumber> y) {
+            return x.ColumnMajorIndex(Columns).CompareTo(y.ColumnMajorIndex(Columns));
+        }
     }
 }

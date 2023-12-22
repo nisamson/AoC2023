@@ -19,7 +19,7 @@
 using System.Collections;
 using System.Numerics;
 
-namespace AoC2023;
+namespace AoC.Support;
 
 public struct Range<TNumeric>: IEnumerable<TNumeric> where TNumeric: INumber<TNumeric> {
     public TNumeric Start { get; }

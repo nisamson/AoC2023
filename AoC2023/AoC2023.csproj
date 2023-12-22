@@ -26,6 +26,7 @@
       <PackageReference Include="QuikGraph" Version="2.5.0" />
       <PackageReference Include="QuikGraph.Graphviz" Version="2.5.0" />
       <PackageReference Include="Rationals" Version="2.3.0" />
+      <PackageReference Include="VDS.Common" Version="2.0.0" />
     </ItemGroup>
 
     <ItemGroup>
@@ -39,6 +40,10 @@
     <ItemGroup>
       <None Remove="2023\Inputs\**" />
       <None Remove="Saved.json" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\AoC.Support\AoC.Support.csproj" />
     </ItemGroup>
 
 </Project>

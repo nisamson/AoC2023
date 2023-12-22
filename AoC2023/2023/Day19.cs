@@ -20,6 +20,7 @@
 
 using System.Diagnostics;
 using System.Linq.Expressions;
+using AoC.Support;
 using Farkle;
 using Farkle.Builder;
 

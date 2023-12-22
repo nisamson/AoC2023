@@ -19,6 +19,7 @@
 #endregion
 
     using System.Collections.Immutable;
+    using AoC.Support;
     using Farkle;
     using Farkle.Builder;
 

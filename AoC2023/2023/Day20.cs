@@ -19,6 +19,7 @@
 #endregion
 
 using System.Runtime.CompilerServices;
+using AoC.Support;
 using QuikGraph;
 using QuikGraph.Graphviz;
 

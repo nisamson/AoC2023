@@ -18,6 +18,7 @@
 
 #endregion
 
+using AoC.Support;
 using Farkle;
 using Farkle.Builder;
 
@@ -76,7 +77,7 @@ public class Day08 : Adventer {
         public static Day08Problem Parse(string[] input) {
             var nonEmpty = input.Where(s => !string.IsNullOrWhiteSpace(s));
             var directions = DirectionExtensions.ParseMany(input[0]).ToList();
-            var nodes = nonEmpty.Skip(1).Select(Node.Parse).ToDictionary(n => n.Name, IterUtils.Identity);
+            var nodes = nonEmpty.Skip(1).Select(Node.Parse).ToDictionary<Node, string>(n => n.Name);
             return new Day08Problem(directions, nodes);
         }
 
@@ -181,7 +182,7 @@ public class Day08 : Adventer {
             var problem = Nonterminal.Create(
                 "problem",
                 directions.Extended().Extend(nodes).Finish(
-                    (directions, nodes) => new Day08Problem(directions, nodes.ToDictionary(n => n.Name, IterUtils.Identity))
+                    (directions, nodes) => new Day08Problem(directions, nodes.ToDictionary<Node, string>(n => n.Name))
                 )
             );
             Designtime = problem

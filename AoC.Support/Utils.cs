@@ -17,11 +17,10 @@
 #endregion
 
 using System.Collections;
-using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
-namespace AoC2023;
+namespace AoC.Support;
 
 public static class IterUtils {
     public static bool AllEqual<T>(this IEnumerable<T> source, IEqualityComparer<T>? comparer = null) {
@@ -98,6 +97,19 @@ public static class IterUtils {
     }
     
     public static T Identity<T>(T x) => x;
+
+    public static IEnumerable<(T, T)> CartesianProduct<T>(this IEnumerable<T> source) {
+        var list = source.ToList();
+        return CartesianProduct(list);
+    }
+
+    public static IEnumerable<(T, T)> CartesianProduct<T>(this IReadOnlyList<T> source) {
+        for (var i = 0; i < source.Count; i++) {
+            for (var j = i + 1; j < source.Count; j++) {
+                yield return (source[i], source[j]);
+            }
+        }
+    }
     
     public static IEnumerable<IEnumerable<string>> SplitByEmptyLines(this string[] source) {
         var i = 0;

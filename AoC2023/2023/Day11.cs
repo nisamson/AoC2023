@@ -19,6 +19,7 @@
 #endregion
 
 using System.Text;
+using AoC.Support;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Single;
 

@@ -9,6 +9,7 @@ var day = solutions.GetMostRecentDay();
 // var day = solutions.GetDay(2023, 1);
 await day.DownloadInputAsync();
 
+// day.Bag["part1Steps"] = "3";
 // day.SetTestInput(day.Bag["test"]);
 await day.SubmitPart1Async();
 await day.CheckPart1Async();

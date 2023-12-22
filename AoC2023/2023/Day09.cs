@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using AoC.Support;
 using Rationals;
 
 namespace AoC2023._2023;

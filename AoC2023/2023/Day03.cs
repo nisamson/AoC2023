@@ -17,6 +17,7 @@
 #endregion
 
 using AdventOfCodeSupport;
+using AoC.Support;
 
 namespace AoC2023._2023;
 

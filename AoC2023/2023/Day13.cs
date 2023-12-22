@@ -16,6 +16,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #endregion
 
+using AoC.Support;
+
 namespace AoC2023._2023;
 
 public class Day13: Adventer {

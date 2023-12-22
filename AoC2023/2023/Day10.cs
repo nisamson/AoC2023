@@ -18,6 +18,7 @@
 
 #endregion
 
+using AoC.Support;
 using NetTopologySuite.Geometries;
 using QuikGraph;
 using QuikGraph.Algorithms;
@@ -69,25 +70,25 @@ class PipeGrid {
         }
     }
 
-    public static IEnumerable<AoC2023.Direction> ConnectedDirections(char c) {
+    public static IEnumerable<Direction> ConnectedDirections(char c) {
         // Up
         if (c is '|' or 'L' or 'J') {
-            yield return AoC2023.Direction.Up;
+            yield return Direction.Up;
         }
         
         // Down
         if (c is '|' or 'F' or '7') {
-            yield return AoC2023.Direction.Down;
+            yield return Direction.Down;
         }
         
         // Left
         if (c is '-' or 'J' or '7') {
-            yield return AoC2023.Direction.Left;
+            yield return Direction.Left;
         }
         
         // Right
         if (c is '-' or 'L' or 'F') {
-            yield return AoC2023.Direction.Right;
+            yield return Direction.Right;
         }
     }
 
