@@ -6,8 +6,15 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+      <DebugSymbols>true</DebugSymbols>
+    </PropertyGroup>
     
     <ItemGroup>
+        <PackageReference Include="CommunityToolkit.HighPerformance" Version="8.2.2" />
+        <PackageReference Include="ILGPU" Version="1.5.1" />
+        <PackageReference Include="ILGPU.Algorithms" Version="1.5.1" />
         <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
         <PackageReference Include="MathNet.Numerics.MKL.Win" Version="3.0.0" />
         <PackageReference Include="MathNet.Numerics.Providers.CUDA" Version="5.0.0" />

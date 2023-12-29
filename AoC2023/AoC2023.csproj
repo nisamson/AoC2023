@@ -46,4 +46,8 @@
       <ProjectReference Include="..\AoC.Support\AoC.Support.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="2022\Inputs\" />
+    </ItemGroup>
+
 </Project>

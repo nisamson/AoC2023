@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC2023 - Utils.cs
 // Copyright (C) 2023 Nicholas
 // 
@@ -14,11 +15,13 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #endregion
 
 using System.Collections;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using MathNet.Numerics.LinearAlgebra;
 
 namespace AoC.Support;
 
@@ -33,7 +36,7 @@ public static class IterUtils {
                 first = item;
                 continue;
             }
-            
+
             if (!comparer.Equals(item, first)) {
                 return false;
             }
@@ -41,14 +44,14 @@ public static class IterUtils {
 
         return true;
     }
-    
+
     public static IEnumerable<T> Observe<T>(this IEnumerable<T> source, Action<T> action) {
         foreach (var item in source) {
             action(item);
             yield return item;
         }
     }
-    
+
     public static IEnumerable<T> Observe<T>(this IEnumerable<T> source, Action<T, int> action) {
         var i = 0;
         foreach (var item in source) {
@@ -56,28 +59,33 @@ public static class IterUtils {
             yield return item;
         }
     }
-    
+
     public static void Consume<T>(this IEnumerable<T> source, Action<T> action) {
         foreach (var item in source) {
             action(item);
         }
     }
-    
+
+    public static void Consume<T>(this ParallelQuery<T> source, Action<T> action) {
+        source.ForAll(action);
+    }
+
     public static void Consume<T>(this IEnumerable<T> source, Action<T, int> action) {
         var i = 0;
         foreach (var item in source) {
             action(item, i++);
         }
     }
-    
-    public static TNumeric Product<TNumeric>(this IEnumerable<TNumeric> source) where TNumeric: INumber<TNumeric> {
+
+    public static TNumeric Product<TNumeric>(this IEnumerable<TNumeric> source) where TNumeric : INumber<TNumeric> {
         return source.Aggregate(TNumeric.One, (current, item) => current * item);
     }
-    
-    public static TNumeric Product<TSource, TNumeric>(this IEnumerable<TSource> source, Func<TSource, TNumeric> selector) where TNumeric: INumber<TNumeric> {
+
+    public static TNumeric Product<TSource, TNumeric>(this IEnumerable<TSource> source, Func<TSource, TNumeric> selector)
+        where TNumeric : INumber<TNumeric> {
         return source.Select(selector).Product();
     }
-    
+
     public static IEnumerable<long> Range(long start, long count) {
         var max = start + count - 1;
         switch (count) {
@@ -91,11 +99,11 @@ public static class IterUtils {
             yield return i;
         }
     }
-    
+
     public static IDictionary<T, U> ToDictionary<T, U>(this IEnumerable<(T, U)> source) where T : notnull {
         return source.ToDictionary(x => x.Item1, x => x.Item2);
     }
-    
+
     public static T Identity<T>(T x) => x;
 
     public static IEnumerable<(T, T)> CartesianProduct<T>(this IEnumerable<T> source) {
@@ -110,9 +118,10 @@ public static class IterUtils {
             }
         }
     }
-    
+
     public static IEnumerable<IEnumerable<string>> SplitByEmptyLines(this string[] source) {
         var i = 0;
+
         IEnumerable<string> Splitter(string[] source) {
             for (; i < source.Length; i++) {
                 var s = source[i];
@@ -124,14 +133,54 @@ public static class IterUtils {
                 yield return s;
             }
         }
-        
+
         while (i < source.Length) {
             yield return Splitter(source);
         }
     }
-    
+
     public static IEnumerable<T> Once<T>(this T item) {
         yield return item;
+    }
+
+    public static IEnumerable<T> EnumerateRow<T>(this T[,] source, int row) {
+        for (var i = 0; i < source.GetLength(1); i++) {
+            yield return source[row, i];
+        }
+    }
+
+    public static IEnumerable<T> EnumerateColumn<T>(this T[,] source, int column) {
+        for (var i = 0; i < source.GetLength(0); i++) {
+            yield return source[i, column];
+        }
+    }
+
+    public static IEnumerable<IEnumerable<T>> EnumerateRows<T>(this T[,] source) {
+        for (var i = 0; i < source.GetLength(0); i++) {
+            yield return source.EnumerateRow(i);
+        }
+    }
+
+    public static IEnumerable<IEnumerable<T>> EnumerateColumns<T>(this T[,] source) {
+        for (var i = 0; i < source.GetLength(1); i++) {
+            yield return source.EnumerateColumn(i);
+        }
+    }
+
+    public static IEnumerable<T> EnumerateRowMajor<T>(this T[,] source) {
+        for (var i = 0; i < source.GetLength(0); i++) {
+            for (var j = 0; j < source.GetLength(1); j++) {
+                yield return source[i, j];
+            }
+        }
+    }
+
+    public static IEnumerable<T> EnumerateColumnMajor<T>(this T[,] source) {
+        for (var i = 0; i < source.GetLength(1); i++) {
+            for (var j = 0; j < source.GetLength(0); j++) {
+                yield return source[j, i];
+            }
+        }
     }
 }
 
@@ -145,24 +194,118 @@ public static class MathUtils {
 
         return a;
     }
-    
+
     public static long Lcm(long a, long b) {
         return a / Gcd(a, b) * b;
     }
-    
+
     public static T Pow<T>(this T x, int y) where T : INumber<T> {
         return Enumerable.Repeat(x, y).Product();
+    }
+
+    public static TOther IntoChecked<TOther, T>(this T x) where T : INumberBase<T> where TOther : INumberBase<TOther> {
+        return TOther.CreateChecked(x);
+    }
+
+    public static TOther IntoTruncating<TOther, T>(this T x) where T : INumberBase<T> where TOther : INumberBase<TOther> {
+        return TOther.CreateTruncating(x);
+    }
+
+    public static TOther IntoSaturating<TOther, T>(this T x) where T : INumberBase<T> where TOther : INumberBase<TOther> {
+        return TOther.CreateSaturating(x);
+    }
+
+    public static Matrix<TNumeric> ToBoolean<TNumeric>(this Matrix<TNumeric> matrix) where TNumeric : struct, INumber<TNumeric> {
+        return matrix.Map(x => x != TNumeric.Zero ? TNumeric.One : TNumeric.Zero);
+    }
+
+    public static Matrix<TNumeric> ToBooleanInplace<TNumeric>(this Matrix<TNumeric> matrix) where TNumeric : struct, INumber<TNumeric> {
+        matrix.MapInplace(x => x != TNumeric.Zero ? TNumeric.One : TNumeric.Zero);
+        return matrix;
+    }
+
+    public static byte[,] ToBytes<TNumeric>(this Matrix<TNumeric> matrix) where TNumeric : struct, INumber<TNumeric> {
+        var res = new byte[matrix.RowCount, matrix.ColumnCount];
+        matrix.EnumerateIndexed(Zeros.AllowSkip).AsParallel().ForAll(
+            t => {
+                var i = t.Item1;
+                var j = t.Item2;
+                var x = t.Item3;
+                res[i, j] = byte.CreateChecked(x);
+            }
+        );
+
+        return res;
+    }
+
+    public static Matrix<TNumeric> ToMatrix<TNumeric>(this byte[,] matrix) where TNumeric : struct, INumber<TNumeric> {
+        var res = Matrix<TNumeric>.Build.Dense(matrix.GetLength(0), matrix.GetLength(1));
+        for (var i = 0; i < matrix.GetLength(0); i++) {
+            for (var j = 0; j < matrix.GetLength(1); j++) {
+                res[i, j] = TNumeric.CreateChecked(matrix[i, j]);
+            }
+        }
+
+        return res;
+    }
+
+    public static double HarmonicMean<TNumeric>(this IEnumerable<TNumeric> n) where TNumeric : INumber<TNumeric> {
+        var info = n.GroupBy(_ => 1)
+            .Select(grp => new { Count = grp.Count(), Sum = grp.Sum(i => 1f / double.CreateChecked(i)) });
+        return info.Sum(i => i.Count / i.Sum);
+    }
+    
+    public static double GeometricMean<TNumeric>(this IEnumerable<TNumeric> n) where TNumeric : INumber<TNumeric> {
+        var info = n
+            .Observe(
+                n => {
+                    ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(n, TNumeric.Zero);
+                }
+            )
+            .Select(double.CreateChecked)
+            .GroupBy(_ => 1)
+            .Select(grp => new { Count = grp.Count(), LogSum = grp.Sum(Math.Log) })
+            .FirstOrDefault(new { Count = 0, LogSum = 0.0 });
+        ArgumentOutOfRangeException.ThrowIfLessThan(info.Count, 1);
+        return Math.Exp((info.LogSum / info.Count)).CheckedNotNaN();
+    }
+    
+    public static TNumeric CheckedNotNaN<TNumeric>(this TNumeric n) where TNumeric : INumber<TNumeric> {
+        // ReSharper disable once EqualExpressionComparison
+        if (n != n) {
+            throw new ArithmeticException("Found NaN");
+        }
+
+        return n;
+    }
+    
+    public static double GeometricMean<TNumeric>(params TNumeric[] n) where TNumeric : INumber<TNumeric> {
+        return GeometricMean(new ReadOnlySpan<TNumeric>(n));
+    }
+
+    public static double GeometricMean<TNumeric>(ReadOnlySpan<TNumeric> n) where TNumeric : INumber<TNumeric> {
+        var cnt = n.Length;
+        var prod = TNumeric.One;
+        ArgumentOutOfRangeException.ThrowIfLessThan(cnt, 1, "n.Length");
+        foreach (var x in n) {
+            if (x <= TNumeric.Zero) {
+                throw new ArgumentOutOfRangeException(nameof(n), x, "Must be positive");
+            }
+
+            prod *= x;
+        }
+
+        return Math.Pow(double.CreateSaturating(prod), 1/(double) cnt);
     }
 }
 
 public class Grid<TItem> {
-    
     // Row-major order
     private TItem[] items;
     public int Width { get; }
     public int Height { get; }
     public int Size => Width * Height;
-    
+
     public Grid(int width, int height, IEnumerable<TItem>? items = null) {
         Width = width;
         Height = height;
@@ -176,44 +319,45 @@ public class Grid<TItem> {
             this.items[i++] = item;
         }
     }
-    
+
     public TItem this[int x, int y] {
         get => items[x + y * Width];
         set => items[x + y * Width] = value;
     }
-    
+
     public TItem this[Vertex<int> coords] {
         get => this[coords.X, coords.Y];
         set => this[coords.X, coords.Y] = value;
     }
-    
+
     public Span<TItem> GetRow(int y) {
         return items.AsSpan(y * Width, Width);
     }
-    
+
     public StrideSpan<TItem> GetColumn(int x) {
         return new StrideSpan<TItem>(items, Width, x, Height);
     }
 }
 
-public readonly struct StrideSpan<TItem>: IEnumerable<TItem> {
+public readonly struct StrideSpan<TItem> : IEnumerable<TItem> {
     private readonly TItem[] items;
     private readonly int stride;
     private readonly int offset;
     private readonly int count;
+
     public StrideSpan(TItem[] items, int stride, int offset, int count) {
         if (stride < 1) {
             throw new ArgumentOutOfRangeException(nameof(stride));
         }
-        
+
         if (offset < 0 || offset >= items.Length) {
             throw new ArgumentOutOfRangeException(nameof(offset));
         }
-        
+
         if (count < 0 || offset + count * stride > items.Length) {
             throw new ArgumentOutOfRangeException(nameof(count));
         }
-        
+
         this.items = items;
         this.stride = stride;
         this.offset = offset;
@@ -224,7 +368,7 @@ public readonly struct StrideSpan<TItem>: IEnumerable<TItem> {
         get => items[CheckBounds(offset + index * stride)];
         set => items[CheckBounds(offset + index * stride)] = value;
     }
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int CheckBounds(int index) {
         if (index < 0 || index >= count) {
@@ -233,8 +377,9 @@ public readonly struct StrideSpan<TItem>: IEnumerable<TItem> {
 
         return index;
     }
-    
+
     public int Length => count;
+
     public IEnumerator<TItem> GetEnumerator() {
         for (var i = 0; i < count; i++) {
             yield return this[i];

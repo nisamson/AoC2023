@@ -31,6 +31,6 @@ if (day is Day01 d1) {
 
 //
 //
-day.Benchmark();
+// day.Benchmark();
 
 // solutions.BenchmarkAll();
