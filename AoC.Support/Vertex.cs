@@ -60,6 +60,16 @@ public static class DirectionExtensions {
             _   => throw new ArgumentOutOfRangeException(nameof(c), c, "Invalid direction"),
         };
     }
+
+    public static Direction Opposite(this Direction dir) {
+        return dir switch {
+            Direction.Up    => Direction.Down,
+            Direction.Down  => Direction.Up,
+            Direction.Left  => Direction.Right,
+            Direction.Right => Direction.Left,
+            _                   => throw new ArgumentOutOfRangeException(nameof(dir), dir, "Invalid direction"),
+        };
+    }
 }
 
 public readonly record struct Vertex<TNumber>(TNumber X, TNumber Y) where TNumber: INumber<TNumber> {

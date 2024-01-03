@@ -5,16 +5,16 @@ using AoC2023._2023;
 
 Console.OutputEncoding = Encoding.UTF8;
 var solutions = new AdventSolutions();
-var day = solutions.GetMostRecentDay();
-// var day = solutions.GetDay(2023, 1);
+// var day = solutions.GetMostRecentDay();
+var day = solutions.GetDay(2023, 23);
 await day.DownloadInputAsync();
 
 // day.Bag["part1Steps"] = "3";
 // day.SetTestInput(day.Bag["test"]);
 await day.SubmitPart1Async();
 await day.CheckPart1Async();
-await day.SubmitPart2Async();
-await day.CheckPart2Async();
+// await day.SubmitPart2Async();
+// await day.CheckPart2Async();
 // day.Part1();
 // await day.CheckPart2Async();
 // if (day is IAdvent advent) {

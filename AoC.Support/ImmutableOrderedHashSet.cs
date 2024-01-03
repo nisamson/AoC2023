@@ -88,7 +88,7 @@ public sealed class ImmutableOrderedHashSet<TItem>: IImmutableSet<TItem> {
         return set.Contains(value);
     }
 
-    public IImmutableSet<TItem> Except(IEnumerable<TItem> other) {
+    IImmutableSet<TItem> IImmutableSet<TItem>.Except(IEnumerable<TItem> other) {
         IReadOnlyCollection<TItem> otherList = other as IImmutableSet<TItem> ?? other.ToImmutableHashSet();
         var newSet = set.Except(otherList);
         if (newSet.Count == set.Count) {
@@ -96,6 +96,10 @@ public sealed class ImmutableOrderedHashSet<TItem>: IImmutableSet<TItem> {
         }
         var newList = list.RemoveAll(otherList.Contains);
         return new ImmutableOrderedHashSet<TItem>(list: newList, set: newSet);
+    }
+    
+    public ImmutableOrderedHashSet<TItem> Except(IEnumerable<TItem> other) {
+        return (ImmutableOrderedHashSet<TItem>) ((IImmutableSet<TItem>) this).Except(other);
     }
 
     public IImmutableSet<TItem> Intersect(IEnumerable<TItem> other) {
@@ -128,7 +132,11 @@ public sealed class ImmutableOrderedHashSet<TItem>: IImmutableSet<TItem> {
         return set.Overlaps(other);
     }
 
-    public IImmutableSet<TItem> Remove(TItem value) {
+    IImmutableSet<TItem> IImmutableSet<TItem>.Remove(TItem value) {
+        return InternalRemove(value);
+    }
+    
+    public ImmutableOrderedHashSet<TItem> Remove(TItem value) {
         return InternalRemove(value);
     }
 
@@ -149,7 +157,11 @@ public sealed class ImmutableOrderedHashSet<TItem>: IImmutableSet<TItem> {
         return set.TryGetValue(equalValue, out actualValue);
     }
 
-    public IImmutableSet<TItem> Union(IEnumerable<TItem> other) {
+    IImmutableSet<TItem> IImmutableSet<TItem>.Union(IEnumerable<TItem> other) {
+        return Union(other);
+    }
+    
+    public ImmutableOrderedHashSet<TItem> Union(IEnumerable<TItem> other) {
         var otherSet = other as IImmutableSet<TItem> ?? other.ToImmutableHashSet();
         var newSet = set.Union(otherSet);
         if (newSet.Count == set.Count) {

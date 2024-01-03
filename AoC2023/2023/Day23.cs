@@ -126,6 +126,11 @@ public class Day23 : Adventer {
                         if (!neighbor.ExistsInGrid(Width, Height)) {
                             continue;
                         }
+                        
+                        // if that tile is pointing back at us, we can't go there
+                        if (map[neighbor.Y, neighbor.X] is Slope s && s.Direction == direction.Opposite()) {
+                            continue;
+                        }
 
                         var neighborTile = map[neighbor.Y, neighbor.X];
                         if (!neighborTile.Traversable) {

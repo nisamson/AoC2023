@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC.Support - GraphExtensions.cs
 // Copyright (C) 2023 Nicholas
 // 
@@ -14,6 +15,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #endregion
 
 using QuikGraph;
@@ -21,7 +23,9 @@ using QuikGraph;
 namespace AoC.Support;
 
 public static class GraphExtensions {
-    public static IEnumerable<TVertex> DfsPreorder<TVertex, TEdge>(this IVertexListGraph<TVertex, TEdge> graph, TVertex root, IEqualityComparer<TVertex>? comparer = null)
+    public static IEnumerable<TVertex> DfsPreorder<TVertex, TEdge>(this IVertexListGraph<TVertex, TEdge> graph,
+        TVertex root,
+        IEqualityComparer<TVertex>? comparer = null)
         where TEdge : IEdge<TVertex> {
         comparer ??= EqualityComparer<TVertex>.Default;
         var stack = new Stack<TVertex>();
@@ -40,7 +44,21 @@ public static class GraphExtensions {
         }
     }
 
-    public static IEnumerable<Edge<TVertex>> DfsPreorderEdges<TVertex, TEdge>(this IVertexListGraph<TVertex, TEdge> graph, TVertex root, IEqualityComparer<TVertex>? comparer = null) where TEdge : IEdge<TVertex> {
+
+    // public static IDictionary<TVertex, int> ShortestPathLengthsFrom<TVertex, TEdge>(this IVertexListGraph<TVertex, TEdge> graph,
+    //     TVertex root,
+    //     Func<TVertex, TVertex, int> edgeCost,
+    //     IEqualityComparer<TVertex>? comparer = null)
+    //     where TEdge : IEdge<TVertex> {
+    //     
+    //     comparer ??= EqualityComparer<TVertex>.Default;
+    //     var queue = new PriorityQueue<TVertex, int>();
+    //     
+    // }
+
+    public static IEnumerable<Edge<TVertex>> DfsPreorderEdges<TVertex, TEdge>(this IVertexListGraph<TVertex, TEdge> graph,
+        TVertex root,
+        IEqualityComparer<TVertex>? comparer = null) where TEdge : IEdge<TVertex> {
         comparer ??= EqualityComparer<TVertex>.Default;
         var stack = new Stack<TVertex>();
         var visited = new HashSet<TVertex>(comparer);

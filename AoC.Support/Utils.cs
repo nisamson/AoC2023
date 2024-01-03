@@ -182,6 +182,108 @@ public static class IterUtils {
             }
         }
     }
+    
+    public static bool IsEmpty<T>(this IEnumerable<T> source) {
+        return !source.Any();
+    }
+
+    public static bool IsEmpty<T>(this ICollection<T> source) {
+        return source.Count == 0;
+    }
+
+    public static bool IsEmpty<T>(this IList<T> source) {
+        return source.Count == 0;
+    }
+    
+    public static bool IsEmpty<T>(this IReadOnlyCollection<T> source) {
+        return source.Count == 0;
+    }
+    
+    public static bool IsEmpty<T>(this IReadOnlyList<T> source) {
+        return source.Count == 0;
+    }
+    
+    public static bool IsEmpty<T>(this T[] source) {
+        return source.Length == 0;
+    }
+
+    public static bool IsEmpty<T>(this Span<T> source) {
+        return source.IsEmpty;
+    }
+    
+    public static bool IsEmpty<T>(this ReadOnlySpan<T> source) {
+        return source.IsEmpty;
+    }
+    
+    public static bool IsEmpty<T>(this Memory<T> source) {
+        return source.IsEmpty;
+    }
+    
+    public static bool IsEmpty<T>(this ReadOnlyMemory<T> source) {
+        return source.IsEmpty;
+    }
+    
+    public static bool IsNotEmpty<T>(this IEnumerable<T> source) {
+        return source.Any();
+    }
+    
+    public static bool IsNotEmpty<T>(this ICollection<T> source) {
+        return source.Count != 0;
+    }
+    
+    public static bool IsNotEmpty<T>(this IList<T> source) {
+        return source.Count != 0;
+    }
+    
+    public static bool IsNotEmpty<T>(this IReadOnlyCollection<T> source) {
+        return source.Count != 0;
+    }
+    
+    public static bool IsNotEmpty<T>(this IReadOnlyList<T> source) {
+        return source.Count != 0;
+    }
+    
+    public static bool IsNotEmpty<T>(this T[] source) {
+        return source.Length != 0;
+    }
+    
+    public static bool IsNotEmpty<T>(this Span<T> source) {
+        return !source.IsEmpty;
+    }
+    
+    public static bool IsNotEmpty<T>(this ReadOnlySpan<T> source) {
+        return !source.IsEmpty;
+    }
+    
+    public static bool IsNotEmpty<T>(this Memory<T> source) {
+        return !source.IsEmpty;
+    }
+    
+    public static bool IsNotEmpty<T>(this ReadOnlyMemory<T> source) {
+        return !source.IsEmpty;
+    }
+    
+    public static ReadOnlySpan<T> AsReadOnlySpan<T>(this Span<T> source) {
+        return source;
+    }
+    
+    public static ReadOnlySpan<T> AsReadOnlySpan<T>(this Memory<T> source) {
+        return source.Span;
+    }
+    
+    public static ReadOnlySpan<T> AsReadOnlySpan<T>(this ReadOnlyMemory<T> source) {
+        return source.Span;
+    }
+    
+    public static ReadOnlySpan<T> AsReadOnlySpan<T>(this T[] source) {
+        return source;
+    }
+    
+    public static void EnqueueAll<T>(this Queue<T> queue, IEnumerable<T> items) {
+        foreach (var item in items) {
+            queue.Enqueue(item);
+        }
+    }
 }
 
 public static class MathUtils {
@@ -296,6 +398,10 @@ public static class MathUtils {
         }
 
         return Math.Pow(double.CreateSaturating(prod), 1/(double) cnt);
+    }
+    
+    public static TNumeric BooleanToNumeric<TNumeric>(this bool b) where TNumeric : INumber<TNumeric> {
+        return b ? TNumeric.One : TNumeric.Zero;
     }
 }
 
