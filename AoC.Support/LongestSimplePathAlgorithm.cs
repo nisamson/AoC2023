@@ -21,6 +21,7 @@
 using System.Collections;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using AoC.Support.Collections;
 using AoC.Support.Graphs;
 using QuikGraph;
 using QuikGraph.Algorithms;
@@ -39,31 +40,30 @@ public class LongestSimplePathAlgorithm<TVertex, TEdge, TGraph>
     private readonly Func<TVertex, TVertex, TEdge> edgeFactory;
 
     private BidirectionalMatrixPartialGraph<TVertex, TEdge>? transitiveClosure;
-    private IDictionary<TVertex, ImmutableHashSet<TVertex>> reachableFrom;
+    private IDictionary<TVertex, KnownPopulationSet<TVertex>> reachableFrom;
     private BidirectionalMatrixPartialGraph<TVertex, TEdge>? dominatorTree;
+    private readonly KnownPopulationSet<TVertex>.Generator vertexSetGenerator;
 
     private class PathSegment : IEquatable<PathSegment> {
         public PathSegment(TVertex vertex,
-            ImmutableHashSet<TVertex> visited,
+            KnownPopulationSet<TVertex> visited,
             ImmutableQueue<TVertex> path,
-            ImmutableHashSet<TVertex> reachableFromVertex,
+            KnownPopulationSet<TVertex> reachableFromVertex,
             IEqualityComparer<TVertex> comparer) {
             Vertex = vertex;
             Visited = visited;
             Path = path;
-            Reachable = reachableFromVertex.Except(Visited).Remove(vertex);
+            var localKnown = reachableFromVertex.Clone();
+            localKnown.ExceptWith(Visited);
+            localKnown.Remove(vertex);
+            Reachable = localKnown;
             Comparer = comparer;
         }
 
-        public PathSegment(TVertex vertex,
-            ImmutableQueue<TVertex> path,
-            ImmutableHashSet<TVertex> reachableFromVertex,
-            IEqualityComparer<TVertex> comparer) : this(vertex, path.ToImmutableHashSet(comparer), path, reachableFromVertex, comparer) { }
-
         public TVertex Vertex { get; }
-        public ImmutableHashSet<TVertex> Visited { get; }
+        public KnownPopulationSet<TVertex> Visited { get; }
         public ImmutableQueue<TVertex> Path { get; }
-        public ImmutableHashSet<TVertex> Reachable { get; }
+        public KnownPopulationSet<TVertex> Reachable { get; }
 
         public IEqualityComparer<TVertex> Comparer { get; }
 
@@ -90,13 +90,17 @@ public class LongestSimplePathAlgorithm<TVertex, TEdge, TGraph>
             return Symmetric(other);
         }
 
-        public bool Dominates(PathSegment other) {
+        public bool Dominates(PathSegment other, bool proper = false) {
             if (!Comparer.Equals(Vertex, other.Vertex)) {
                 return false;
             }
 
             if (Length < other.Length) {
                 return false;
+            }
+
+            if (proper) {
+                return Reachable.IsProperSupersetOf(other.Reachable);
             }
 
             return Reachable.IsSupersetOf(other.Reachable);
@@ -135,11 +139,12 @@ public class LongestSimplePathAlgorithm<TVertex, TEdge, TGraph>
         Func<TVertex, TVertex, TEdge> edgeFactory,
         IEqualityComparer<TVertex>? comparer = null,
         Func<IEdge<TVertex>, double>? cost = null) {
+        this.comparer = comparer ?? EqualityComparer<TVertex>.Default;
         Graph = BidirectionalMatrixPartialGraph<TVertex, TEdge>.Create(visitedGraph, edgeFactory, this.comparer);
         Root = root;
         Dest = dest;
         this.edgeFactory = edgeFactory;
-        this.comparer = comparer ?? EqualityComparer<TVertex>.Default;
+        vertexSetGenerator = KnownPopulationSet.CreateGenerator(Graph.Vertices, this.comparer);
         this.cost = cost ?? (_ => 1);
     }
 
@@ -175,32 +180,6 @@ public class LongestSimplePathAlgorithm<TVertex, TEdge, TGraph>
             File.WriteAllText($"{Graph.VertexCount}-{DateTime.Now.ToFileTimeUtc()}.dot", renderer.Generate());
             return dominatorTree;
         }
-    }
-
-    private ImmutableHashSet<TVertex> ReachableFromState(PathSegment state) {
-        var res = ImmutableHashSet<TVertex>.Empty.WithComparer(comparer);
-        res = res.Add(state.Vertex);
-        res = res.Union(state.Visited);
-
-        return reachableFrom[state.Vertex].Except(res);
-    }
-
-    private bool VertexEquals(TVertex a, TVertex b) {
-        return ((IEqualityComparer) comparer).Equals(a, b);
-    }
-
-    private bool Dominates(PathSegment a, PathSegment b) {
-        if (!VertexEquals(a.Vertex, b.Vertex)) {
-            return false;
-        }
-
-        if (a.Length < b.Length) {
-            return false;
-        }
-
-        var reachableFromA = ReachableFromState(a);
-        var reachableFromB = ReachableFromState(b);
-        return reachableFromA.IsSupersetOf(reachableFromB);
     }
 
     public IEnumerable<TVertex> Compute() {
@@ -251,19 +230,18 @@ public class LongestSimplePathAlgorithm<TVertex, TEdge, TGraph>
 
         var prevPath = alreadyVisited;
 
-        var frontier = new PriorityQueue<PathSegment, int>(
-            Comparer<int>.Create((a, b) => b.CompareTo(a))
-        );
+        var frontier = new PriorityQueue<PathSegment, int>(Comparer<int>.Create((a, b) => b.CompareTo(a)));
         // var frontier = new Stack<PathSegment>();
         var dominant = new Dictionary<TVertex, PathSegment>(comparer);
         var curPathQueue = ImmutableQueue.CreateRange(currentPath);
-        var origin = new PathSegment(source, curPathQueue, reachableFrom[source], comparer);
+        var origin = new PathSegment(source, vertexSetGenerator.CreateSet(curPathQueue), curPathQueue, reachableFrom[source], comparer);
         frontier.Enqueue(origin, origin.Reachable.Count);
+        // frontier.Push(origin);
         var cnt = 0;
         var probed = 0;
         while (frontier.Count > 0) {
             cnt++;
-            if (cnt % 1000 == 0) {
+            if (cnt % 5000 == 0) {
                 var curCnt = frontier.Count;
                 Console.WriteLine($"Frontier size at {cnt}: {frontier.Count}, probed: {probed}, rejected: {probed - cnt}");
                 if (dominant.TryGetValue(dest, out var ps)) {
@@ -280,7 +258,7 @@ public class LongestSimplePathAlgorithm<TVertex, TEdge, TGraph>
                 //             return true;
                 //         }
                 //
-                //         return e.Element.Dominates(dom);
+                //         return !dom.Dominates(e.Element);
                 //     }
                 // );
                 // frontier = new PriorityQueue<PathSegment, int>(
@@ -291,6 +269,7 @@ public class LongestSimplePathAlgorithm<TVertex, TEdge, TGraph>
             }
 
             var state = frontier.Dequeue();
+            // var state = frontier.Pop();
 
             if (!dominant.TryAdd(state.Vertex, state)) {
                 if (dominant[state.Vertex].Dominates(state)) {
@@ -323,14 +302,16 @@ public class LongestSimplePathAlgorithm<TVertex, TEdge, TGraph>
                     continue;
                 }
 
+                var newVisited = state.Visited.Clone();
+                newVisited.Add(state.Vertex);
                 var newState = new PathSegment(
                     e.Target,
-                    state.Visited.Add(state.Vertex),
+                    newVisited,
                     state.Path.Enqueue(state.Vertex),
                     reachableFrom[e.Target],
                     comparer
                 );
-                
+
                 if (dominant.TryGetValue(newState.Vertex, out var curDom)) {
                     if (curDom.Dominates(newState)) {
                         continue;
@@ -338,12 +319,14 @@ public class LongestSimplePathAlgorithm<TVertex, TEdge, TGraph>
                 }
 
                 frontier.Enqueue(newState, newState.Reachable.Count);
+                // frontier.Push(newState);
             }
         }
 
         if (!dominant.TryGetValue(dest, out var res)) {
             throw new InvalidOperationException("No path found");
         }
+
         return res.EnumeratePath();
     }
 
@@ -357,14 +340,14 @@ public class LongestSimplePathAlgorithm<TVertex, TEdge, TGraph>
         var tc = subGraph.ComputeTransitiveClosure();
         transitiveClosure = tc;
 
-        reachableFrom = new Dictionary<TVertex, ImmutableHashSet<TVertex>>(comparer);
+        reachableFrom = new Dictionary<TVertex, KnownPopulationSet<TVertex>>(comparer);
         foreach (var v in Graph.Vertices) {
-            var reach = ImmutableHashSet.CreateBuilder(comparer);
+            var reach = vertexSetGenerator.CreateSet();
             if (subGraph.ContainsVertex(v)) {
                 reach.UnionWith(TransitiveClosure.OutEdges(v).Select(e => e.Target));
             }
 
-            reachableFrom[v] = reach.ToImmutableHashSet();
+            reachableFrom[v] = reach;
         }
     }
 

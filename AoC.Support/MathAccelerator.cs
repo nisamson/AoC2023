@@ -386,9 +386,9 @@ public class MathAccelerator : IDisposable {
 
         var kernel = accelerator.LoadAutoGroupedStreamKernel<
             Index2D, int, ArrayView2D<byte, Stride2D.DenseX>, ArrayView2D<byte, Stride2D.DenseX>>(WarshallIntegerStepKernel);
-        if (kernel.GetCompiledKernel() is PTXCompiledKernel ptxKernel) {
-            Console.WriteLine(ptxKernel.PTXAssembly);
-        }
+        // if (kernel.GetCompiledKernel() is PTXCompiledKernel ptxKernel) {
+        //     Console.WriteLine(ptxKernel.PTXAssembly);
+        // }
 
         rkm1.CopyFromCPU(a);
         for (var k = 0; k < n; k++) {
@@ -421,9 +421,9 @@ public class MathAccelerator : IDisposable {
 
         var kernel = accelerator.LoadStreamKernel<
             int, ArrayView2D<byte, Stride2D.DenseX>, ArrayView2D<byte, Stride2D.DenseX>>(WarshallIntegerSimpleStepKernel);
-        if (kernel.GetCompiledKernel() is PTXCompiledKernel ptxKernel) {
-            Console.WriteLine(ptxKernel.PTXAssembly);
-        }
+        // if (kernel.GetCompiledKernel() is PTXCompiledKernel ptxKernel) {
+        //     Console.WriteLine(ptxKernel.PTXAssembly);
+        // }
 
         rkm1.CopyFromCPU(a);
         for (var k = 0; k < n; k++) {
