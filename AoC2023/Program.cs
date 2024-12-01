@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using AdventOfCodeSupport;
+using AoC2023;
 using AoC2023._2023;
 
 Console.OutputEncoding = Encoding.UTF8;
