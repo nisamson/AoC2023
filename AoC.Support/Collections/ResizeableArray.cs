@@ -26,10 +26,10 @@ namespace AoC.Support.Collections;
 
 [Serializable]
 public class ResizeableArray<T>(int initialSize = 0) : IList<T>, IReadOnlyList<T>, ICloneable {
-    private T[] data = initialSize == 0 ? Array.Empty<T>() : new T[initialSize];
-    private int version = 0;
     public const int DefaultInitialSize = 16;
     private const int GrowthFactor = 2;
+    private T[] data = initialSize == 0 ? Array.Empty<T>() : new T[initialSize];
+    private int version;
 
     public ResizeableArray(IEnumerable<T> enumerable) : this() {
         AddRange(enumerable);
@@ -39,11 +39,13 @@ public class ResizeableArray<T>(int initialSize = 0) : IList<T>, IReadOnlyList<T
         AddRange(collection);
     }
 
-    IEnumerator<T> IEnumerable<T>.GetEnumerator() {
-        return new Enumerator(this);
+    public int Capacity => data.Length;
+
+    object ICloneable.Clone() {
+        return Clone();
     }
 
-    public Enumerator GetEnumerator() {
+    IEnumerator<T> IEnumerable<T>.GetEnumerator() {
         return new Enumerator(this);
     }
 
@@ -53,83 +55,6 @@ public class ResizeableArray<T>(int initialSize = 0) : IList<T>, IReadOnlyList<T
 
     public void Add(T item) {
         Insert(Count, item);
-    }
-
-    public void AddRange(IEnumerable<T> enumerable) {
-        foreach (var item in enumerable) {
-            Add(item);
-        }
-    }
-
-    public void AddRange(IReadOnlyCollection<T> collection) {
-        var newCount = Count + collection.Count;
-        if (newCount > Capacity) {
-            EnsureCapacity(newCount);
-        }
-
-        var arr = collection switch {
-            T[] a                 => new ReadOnlyMemory<T>(a).Some(),
-            ResizeableArray<T> ra => new ReadOnlyMemory<T>(ra.data).Some(),
-            _                     => Option.None<ReadOnlyMemory<T>>(),
-        };
-
-        if (arr.IsSome) {
-            // FIXME
-            arr.Value.CopyTo(data.AsMemory(Count));
-            Count = newCount;
-            return;
-        }
-
-        AddRange((IEnumerable<T>) collection);
-    }
-
-    /// <summary>
-    /// Resizes the array to the given size. If the new size is smaller than the current size, the array is truncated.
-    /// If the new size is larger than the current size, the array is extended with the given default value.
-    /// If the new size is greater than the current capacity, 
-    /// </summary>
-    /// <param name="newSize">the size of the array after this function returns.</param>
-    /// <param name="defaultValue">the default value to fill the array with if it grows.</param>
-    /// <returns>true if the capacity of the array was changed.</returns>
-    public bool Resize(int newSize, T? defaultValue = default) {
-        ArgumentOutOfRangeException.ThrowIfNegative(newSize);
-        var oldLength = Count;
-        bool res;
-        if (newSize > Capacity) {
-            res = EnsureCapacity(newSize);
-        } else if (newSize < Capacity) {
-            res = TruncateCapacity(newSize);
-        } else {
-            return false;
-        }
-
-        if (EqualityComparer<T>.Default.Equals(defaultValue, default(T?))) {
-            return res;
-        }
-
-        Array.Fill(data, defaultValue, oldLength, newSize - oldLength);
-        return res;
-    }
-
-    public bool EnsureCapacity(int capacity) {
-        if (capacity < Capacity) {
-            return false;
-        }
-
-        var newCapacity = Math.Max(DefaultInitialSize, Capacity * GrowthFactor);
-
-        Array.Resize(ref data, newCapacity);
-        return true;
-    }
-
-    public bool TruncateCapacity(int newSize) {
-        if (newSize >= Capacity) {
-            return false;
-        }
-        
-        Array.Resize(ref data, newSize);
-        Count = Math.Min(Capacity, Count);
-        return true;
     }
 
     public void Clear() {
@@ -146,46 +71,23 @@ public class ResizeableArray<T>(int initialSize = 0) : IList<T>, IReadOnlyList<T
 
     public bool Remove(T item) {
         var index = Array.IndexOf(data, item);
-        if (index == -1) {
-            return false;
-        }
+        if (index == -1) return false;
 
         RemoveAt(index);
         return true;
     }
 
     public int Count { get; private set; }
-    public int Capacity => data.Length;
     public bool IsReadOnly => false;
 
     public int IndexOf(T item) {
         return Array.IndexOf(data, item);
     }
-    
-    public Span<T> AsSpan() {
-        return data.AsSpan(0, Count);
-    }
-    
-    public ReadOnlySpan<T> AsReadOnlySpan() {
-        return data.AsSpan(0, Count);
-    }
-    
-    public Memory<T> AsMemory() {
-        return data.AsMemory(0, Count);
-    }
-    
-    public ReadOnlyMemory<T> AsReadOnlyMemory() {
-        return data.AsMemory(0, Count);
-    }
 
     public void Insert(int index, T item) {
-        if (index < 0 || index > Count) {
-            throw new ArgumentOutOfRangeException(nameof(index));
-        }
+        if (index < 0 || index > Count) throw new ArgumentOutOfRangeException(nameof(index));
 
-        if (Count == Capacity) {
-            EnsureCapacity(Capacity * GrowthFactor);
-        }
+        if (Count == Capacity) EnsureCapacity(Capacity * GrowthFactor);
 
         version++;
         if (Count == index) {
@@ -200,9 +102,7 @@ public class ResizeableArray<T>(int initialSize = 0) : IList<T>, IReadOnlyList<T
     }
 
     public void RemoveAt(int index) {
-        if (index < 0 || index >= Count) {
-            throw new ArgumentOutOfRangeException(nameof(index));
-        }
+        if (index < 0 || index >= Count) throw new ArgumentOutOfRangeException(nameof(index));
 
         Array.Copy(data, index + 1, data, index, Count - index - 1);
         Count--;
@@ -214,10 +114,104 @@ public class ResizeableArray<T>(int initialSize = 0) : IList<T>, IReadOnlyList<T
         set => data[index] = value;
     }
 
+    public Enumerator GetEnumerator() {
+        return new Enumerator(this);
+    }
+
+    public void AddRange(IEnumerable<T> enumerable) {
+        foreach (var item in enumerable) Add(item);
+    }
+
+    public void AddRange(IReadOnlyCollection<T> collection) {
+        var newCount = Count + collection.Count;
+        if (newCount > Capacity) EnsureCapacity(newCount);
+
+        var arr = collection switch {
+            T[] a => new ReadOnlyMemory<T>(a).Some(),
+            ResizeableArray<T> ra => new ReadOnlyMemory<T>(ra.data).Some(),
+            _ => Option.None<ReadOnlyMemory<T>>()
+        };
+
+        if (arr.IsSome) {
+            // FIXME
+            arr.Value.CopyTo(data.AsMemory(Count));
+            Count = newCount;
+            return;
+        }
+
+        AddRange((IEnumerable<T>)collection);
+    }
+
+    /// <summary>
+    ///     Resizes the array to the given size. If the new size is smaller than the current size, the array is truncated.
+    ///     If the new size is larger than the current size, the array is extended with the given default value.
+    ///     If the new size is greater than the current capacity,
+    /// </summary>
+    /// <param name="newSize">the size of the array after this function returns.</param>
+    /// <param name="defaultValue">the default value to fill the array with if it grows.</param>
+    /// <returns>true if the capacity of the array was changed.</returns>
+    public bool Resize(int newSize, T? defaultValue = default) {
+        ArgumentOutOfRangeException.ThrowIfNegative(newSize);
+        var oldLength = Count;
+        bool res;
+        if (newSize > Capacity)
+            res = EnsureCapacity(newSize);
+        else if (newSize < Capacity)
+            res = TruncateCapacity(newSize);
+        else
+            return false;
+
+        if (EqualityComparer<T>.Default.Equals(defaultValue, default)) return res;
+
+        Array.Fill(data, defaultValue, oldLength, newSize - oldLength);
+        return res;
+    }
+
+    public bool EnsureCapacity(int capacity) {
+        if (capacity < Capacity) return false;
+
+        var newCapacity = Math.Max(DefaultInitialSize, Capacity * GrowthFactor);
+
+        Array.Resize(ref data, newCapacity);
+        return true;
+    }
+
+    public bool TruncateCapacity(int newSize) {
+        if (newSize >= Capacity) return false;
+
+        Array.Resize(ref data, newSize);
+        Count = Math.Min(Capacity, Count);
+        return true;
+    }
+
+    public Span<T> AsSpan() {
+        return data.AsSpan(0, Count);
+    }
+
+    public ReadOnlySpan<T> AsReadOnlySpan() {
+        return data.AsSpan(0, Count);
+    }
+
+    public Memory<T> AsMemory() {
+        return data.AsMemory(0, Count);
+    }
+
+    public ReadOnlyMemory<T> AsReadOnlyMemory() {
+        return data.AsMemory(0, Count);
+    }
+
+    public ResizeableArray<T> Clone() {
+        return new ResizeableArray<T>(data);
+    }
+
+    public void GetObjectData(SerializationInfo info, StreamingContext context) {
+        info.AddValue(nameof(data), data);
+    }
+
     public sealed class Enumerator : IEnumerator<T> {
         private readonly ResizeableArray<T> array;
-        private int index = -1;
         private readonly int startVersion;
+        private int index = -1;
 
         internal Enumerator(ResizeableArray<T> array) {
             this.array = array;
@@ -234,29 +228,16 @@ public class ResizeableArray<T>(int initialSize = 0) : IList<T>, IReadOnlyList<T
             CheckVersion();
             index = -1;
         }
-        
-        private void CheckVersion() {
-            if (startVersion != array.version) {
-                throw new InvalidOperationException("Collection was modified; enumeration operation may not execute.");
-            }
-        }
 
         public T Current => array[index];
 
         object? IEnumerator.Current => Current;
 
         public void Dispose() { }
-    }
 
-    object ICloneable.Clone() {
-        return Clone();
-    }
-
-    public ResizeableArray<T> Clone() {
-        return new ResizeableArray<T>(data);
-    }
-
-    public void GetObjectData(SerializationInfo info, StreamingContext context) {
-        info.AddValue(nameof(data), data);
+        private void CheckVersion() {
+            if (startVersion != array.version)
+                throw new InvalidOperationException("Collection was modified; enumeration operation may not execute.");
+        }
     }
 }

@@ -20,7 +20,6 @@
 
 using System.Collections.Frozen;
 using System.Collections.Immutable;
-using System.Data;
 using System.Diagnostics;
 using AoC.Support.Collections;
 using AoC.Support.Functional;
@@ -32,19 +31,18 @@ public class DataFlowDominatorSearchAlgorithm<TGraph, TVertex, TEdge> : Dominato
     where TEdge : IEdge<TVertex> where TVertex : notnull where TGraph : IBidirectionalGraph<TVertex, TEdge> {
     private readonly Dictionary<TVertex, BitArray> dominators = new();
     private readonly Dictionary<TVertex, TVertex> immediateDominators = new();
-    private readonly ImmutableHashSet<TVertex> vertices;
-    private readonly FrozenDictionary<TVertex, int> vertIndices;
     private readonly ImmutableArray<TVertex> postorder;
     private readonly ImmutableArray<TVertex> preorder;
-    private readonly Dictionary<TVertex, BitArray> strictlyDominated = new();
     private readonly Dictionary<TVertex, BitArray> strictDominators = new();
+    private readonly Dictionary<TVertex, BitArray> strictlyDominated = new();
+    private readonly ImmutableHashSet<TVertex> vertices;
+    private readonly FrozenDictionary<TVertex, int> vertIndices;
 
     public DataFlowDominatorSearchAlgorithm(TGraph graph,
         TVertex root,
         Func<TVertex, TVertex, TEdge> edgeFactory,
         IEqualityComparer<TVertex>? comparer = null)
         : base(graph, root, edgeFactory, comparer) {
-        
         preorder = graph.DfsPreorder(root).ToImmutableArray();
         vertices = preorder.ToImmutableHashSet(comparer);
         vertIndices = preorder.Select((v, i) => (v, i)).ToFrozenDictionary(x => x.v, x => x.i, Comparer);
@@ -53,9 +51,7 @@ public class DataFlowDominatorSearchAlgorithm<TGraph, TVertex, TEdge> : Dominato
     }
 
     public override void Compute() {
-        foreach (var vertex in preorder) {
-            dominators[vertex] = new BitArray(preorder.Length, true);
-        }
+        foreach (var vertex in preorder) dominators[vertex] = new BitArray(preorder.Length, true);
 
         dominators[Root].Clear();
         dominators[Root][vertIndices[Root]] = true;
@@ -67,14 +63,10 @@ public class DataFlowDominatorSearchAlgorithm<TGraph, TVertex, TEdge> : Dominato
             iter++;
             changed = false;
             foreach (var v in preorder) {
-                if (Comparer.Equals(v, Root)) {
-                    continue;
-                }
+                if (Comparer.Equals(v, Root)) continue;
 
                 var preds = new BitArray(preorder.Length, true);
-                foreach (var pred in Graph.InEdges(v)) {
-                    preds.And(dominators[pred.Source]);
-                }
+                foreach (var pred in Graph.InEdges(v)) preds.And(dominators[pred.Source]);
 
                 preds[vertIndices[v]] = true;
                 if (preds.Equals(dominators[v])) {
@@ -86,20 +78,16 @@ public class DataFlowDominatorSearchAlgorithm<TGraph, TVertex, TEdge> : Dominato
                 changed = true;
             }
         }
-        
+
         Console.WriteLine("Iterations: " + iter);
 
         foreach (var v in vertices) {
             var varr = new BitArray(preorder.Length);
             strictlyDominated[v] = varr;
             foreach (var u in vertices) {
-                if (Comparer.Equals(u, v)) {
-                    continue;
-                }
+                if (Comparer.Equals(u, v)) continue;
 
-                if (dominators[u][vertIndices[v]]) {
-                    varr[vertIndices[u]] = true;
-                }
+                if (dominators[u][vertIndices[v]]) varr[vertIndices[u]] = true;
             }
         }
 
@@ -107,14 +95,12 @@ public class DataFlowDominatorSearchAlgorithm<TGraph, TVertex, TEdge> : Dominato
             strictDominators[v] = dominators[v].Clone();
             strictDominators[v][vertIndices[v]] = false;
         }
-        
+
         //Compute immediate dominators
         foreach (var v in vertices) {
             foreach (var u in DominatorsOf(v)) {
-                if (!ImmediatelyDominates(u, v)) {
-                    continue;
-                }
-                
+                if (!ImmediatelyDominates(u, v)) continue;
+
                 immediateDominators[v] = u;
                 break;
             }
@@ -128,9 +114,7 @@ public class DataFlowDominatorSearchAlgorithm<TGraph, TVertex, TEdge> : Dominato
     public override bool ImmediatelyDominates(TVertex u, TVertex v) {
         //     public virtual bool ImmediatelyDominates(TVertex u, TVertex v) {
         // return StrictlyDominates(u, v) && !DominatorsOf(v).Any(w => StrictlyDominates(u, w) && StrictlyDominates(w, v));
-        if (!StrictlyDominates(u, v)) {
-            return false;
-        }
+        if (!StrictlyDominates(u, v)) return false;
 
         var vdoms = strictDominators[v];
         var udommed = strictlyDominated[u];
@@ -144,11 +128,9 @@ public class DataFlowDominatorSearchAlgorithm<TGraph, TVertex, TEdge> : Dominato
     public override IEnumerable<TVertex> DominatorsOf(TVertex v) {
         return dominators[v].EnumerateSetBits().Select(i => preorder[i]);
     }
-    
+
     public override IOption<TVertex> ImmediateDominatorOf(TVertex v) {
-        if (!immediateDominators.TryGetValue(v, out var value)) {
-            return Option.None<TVertex>();
-        }
+        if (!immediateDominators.TryGetValue(v, out var value)) return Option.None<TVertex>();
         return value.Some();
     }
 }
@@ -159,6 +141,6 @@ public static class DataFlowDominatorSearchAlgorithm {
         Func<TVertex, TVertex, TEdge> edgeFactory,
         IEqualityComparer<TVertex>? comparer = null)
         where TEdge : IEdge<TVertex> where TVertex : notnull where TGraph : IBidirectionalGraph<TVertex, TEdge> {
-        return new(graph, root, edgeFactory, comparer);
+        return new DataFlowDominatorSearchAlgorithm<TGraph, TVertex, TEdge>(graph, root, edgeFactory, comparer);
     }
 }

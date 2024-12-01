@@ -20,14 +20,8 @@
 
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
 using ILGPU;
-using ILGPU.Backends.PTX;
-using ILGPU.IR;
 using ILGPU.Runtime;
-using ILGPU.Runtime.Cuda;
-using ILGPU.Algorithms;
-using ILGPU.Algorithms.PTX;
 using ILGPU.Runtime.OpenCL;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Single;
@@ -35,8 +29,15 @@ using MathNet.Numerics.LinearAlgebra.Single;
 namespace AoC.Support;
 
 public class MathAccelerator : IDisposable {
-    private Context context;
-    private Accelerator accelerator;
+    /// <summary>
+    ///     Size of the tile (NxN).
+    /// </summary>
+    private const int TileSize = 2;
+
+    private const int CudaType = (int)AcceleratorType.Cuda;
+    private const int CpuType = (int)AcceleratorType.CPU;
+    private readonly Accelerator accelerator;
+    private readonly Context context;
 
     public MathAccelerator(MathMode mode = MathMode.Default, bool cpu = false, bool opencl = false) {
 #if DEBUG
@@ -59,19 +60,16 @@ public class MathAccelerator : IDisposable {
         if (!opencl) {
             accelerator = context.GetPreferredDevice(cpu)
                 .CreateAccelerator(context);
-        } else {
+        }
+        else {
             var clDevs = context.GetCLDevices();
             foreach (var clDev in clDevs) {
                 // Nvidia OpenCL is broken
-                if (clDev.Vendor == CLDeviceVendor.Nvidia) {
-                    continue;
-                }
+                if (clDev.Vendor == CLDeviceVendor.Nvidia) continue;
 
                 // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
                 if ((clDev.DeviceType & CLDeviceType.CL_DEVICE_TYPE_CPU) == 0) {
-                    if (cpu) {
-                        continue;
-                    }
+                    if (cpu) continue;
 
                     accelerator = clDev.CreateAccelerator(context);
                     break;
@@ -81,9 +79,7 @@ public class MathAccelerator : IDisposable {
                 break;
             }
 
-            if (accelerator is null) {
-                throw new InvalidOperationException("No OpenCL device found");
-            }
+            if (accelerator is null) throw new InvalidOperationException("No OpenCL device found");
 
             Debug.WriteLine("Using OpenCL device: " + accelerator);
         }
@@ -107,9 +103,7 @@ public class MathAccelerator : IDisposable {
         var p = b.ColumnCount;
         var bn = b.RowCount;
 
-        if (n != bn) {
-            throw new ArgumentException("Matrix dimensions must agree");
-        }
+        if (n != bn) throw new ArgumentException("Matrix dimensions must agree");
 
         var aBuf = a.ToArray();
         float[,] bBuf;
@@ -120,9 +114,7 @@ public class MathAccelerator : IDisposable {
         using var accB = ReferenceEquals(b, a) ? accA : accelerator.Allocate2DDenseX<float>(new LongIndex2D(p, n));
         using var accC = accelerator.Allocate2DDenseX<float>(new LongIndex2D(p, m));
         accA.CopyFromCPU(aBuf);
-        if (!ReferenceEquals(b, a)) {
-            accB.CopyFromCPU(bBuf);
-        }
+        if (!ReferenceEquals(b, a)) accB.CopyFromCPU(bBuf);
 
         var kernel = accelerator.LoadAutoGroupedStreamKernel<
             Index2D, ArrayView2D<float, Stride2D.DenseX>, ArrayView2D<float, Stride2D.DenseX>,
@@ -142,20 +134,16 @@ public class MathAccelerator : IDisposable {
         var kb = b.RowCount;
         var n = b.ColumnCount;
 
-        if (ka != kb) {
-            throw new ArgumentException("Matrix dimensions must agree");
-        }
+        if (ka != kb) throw new ArgumentException("Matrix dimensions must agree");
 
         var aBuf = a.AsArray() ?? a.ToArray();
         var bBuf = ReferenceEquals(b, a) ? aBuf : b.AsArray() ?? b.ToArray();
         dest ??= new DenseMatrix(m, n);
-        if (dest.RowCount != m || dest.ColumnCount != n) {
+        if (dest.RowCount != m || dest.ColumnCount != n)
             throw new ArgumentException("Destination matrix must be of size MxN");
-        }
 
-        if (ReferenceEquals(dest, a) || ReferenceEquals(dest, b)) {
+        if (ReferenceEquals(dest, a) || ReferenceEquals(dest, b))
             throw new ArgumentException("Destination matrix must not be the same as either input matrix");
-        }
 
         var cBuf = dest.AsArray() ?? dest.ToArray();
 
@@ -163,9 +151,7 @@ public class MathAccelerator : IDisposable {
         using var accB = ReferenceEquals(b, a) ? accA : accelerator.Allocate2DDenseX<float>(new LongIndex2D(ka, n));
         using var accC = accelerator.Allocate2DDenseX<float>(new LongIndex2D(m, n));
         accA.CopyFromCPU(aBuf);
-        if (!ReferenceEquals(b, a)) {
-            accB.CopyFromCPU(bBuf);
-        }
+        if (!ReferenceEquals(b, a)) accB.CopyFromCPU(bBuf);
 
         var kernel = accelerator.LoadStreamKernel<
             ArrayView2D<float, Stride2D.DenseX>, ArrayView2D<float, Stride2D.DenseX>,
@@ -190,9 +176,7 @@ public class MathAccelerator : IDisposable {
         var col = index.X;
         var sum = 0.0f;
 
-        for (var i = 0; i < a.IntExtent.Y; i++) {
-            sum += a[row, i] * b[i, col];
-        }
+        for (var i = 0; i < a.IntExtent.Y; i++) sum += a[row, i] * b[i, col];
 
         c[row, col] = sum;
     }
@@ -212,9 +196,7 @@ public class MathAccelerator : IDisposable {
         var colsB = b.GetLength(1);
         var rowsB = b.GetLength(0);
 
-        if (colsA != rowsB) {
-            throw new ArgumentException("Matrix dimensions must agree");
-        }
+        if (colsA != rowsB) throw new ArgumentException("Matrix dimensions must agree");
 
         var cBuf = new byte[rowsA, colsB];
 
@@ -242,20 +224,13 @@ public class MathAccelerator : IDisposable {
         var row = index.Y;
         var col = index.X;
         byte sum = 0;
-        for (var i = 0; i < a.IntExtent.Y; i++) {
-            sum |= (byte) (a[row, i] & b[i, col]);
-        }
+        for (var i = 0; i < a.IntExtent.Y; i++) sum |= (byte)(a[row, i] & b[i, col]);
 
         c[row, col] = sum;
     }
 
     /// <summary>
-    /// Size of the tile (NxN).
-    /// </summary>
-    const int TileSize = 2;
-
-    /// <summary>
-    /// Multiplies two dense matrices and returns the resultant matrix (using tiling).
+    ///     Multiplies two dense matrices and returns the resultant matrix (using tiling).
     /// </summary>
     /// <param name="accelerator">The Accelerator to run the multiplication on</param>
     /// <param name="a">A dense MxK matrix</param>
@@ -292,12 +267,12 @@ public class MathAccelerator : IDisposable {
     }
 
     /// <summary>
-    /// The tiled matrix multiplication kernel that runs on the accelerated device.
+    ///     The tiled matrix multiplication kernel that runs on the accelerated device.
     /// </summary>
     /// <param name="aView">An input matrix of size MxK</param>
     /// <param name="bView">An input matrix of size KxN</param>
     /// <param name="cView">An output matrix of size MxN</param>
-    static void MatrixMultiplyTiledKernel(
+    private static void MatrixMultiplyTiledKernel(
         ArrayView2D<float, Stride2D.DenseX> aView,
         ArrayView2D<float, Stride2D.DenseX> bView,
         ArrayView2D<float, Stride2D.DenseX> cView) {
@@ -305,8 +280,10 @@ public class MathAccelerator : IDisposable {
         var x = Group.IdxX;
         var y = Group.IdxY;
 
-        var aTile = SharedMemory.Allocate2D<float, Stride2D.DenseX>(new Index2D(TileSize, TileSize), new Stride2D.DenseX(TileSize));
-        var bTile = SharedMemory.Allocate2D<float, Stride2D.DenseX>(new Index2D(TileSize, TileSize), new Stride2D.DenseX(TileSize));
+        var aTile = SharedMemory.Allocate2D<float, Stride2D.DenseX>(new Index2D(TileSize, TileSize),
+            new Stride2D.DenseX(TileSize));
+        var bTile = SharedMemory.Allocate2D<float, Stride2D.DenseX>(new Index2D(TileSize, TileSize),
+            new Stride2D.DenseX(TileSize));
         var sum = 0.0f;
 
         for (var i = 0; i < aView.IntExtent.X; i += TileSize) {
@@ -366,18 +343,15 @@ public class MathAccelerator : IDisposable {
         var y = index.Y;
         var prev = rkm1[x, y];
         // rk[x, y] = Math.Min(rkm1[x, k] * rkm1[k, y] + prev, 1);
-        
-        if (prev != 0) {
+
+        if (prev != 0)
             rk[x, y] = 1;
-        } else {
+        else
             rk[x, y] = rkm1[x, k] * rkm1[k, y];
-        }
     }
 
     public byte[,] WarshallReachabilityMatrix(byte[,] a, bool reuse = true) {
-        if (a.GetLength(0) != a.GetLength(1)) {
-            throw new ArgumentException("Matrix must be square");
-        }
+        if (a.GetLength(0) != a.GetLength(1)) throw new ArgumentException("Matrix must be square");
 
         var n = a.GetLength(0);
 
@@ -385,7 +359,8 @@ public class MathAccelerator : IDisposable {
         using var rk = accelerator.Allocate2DDenseX<byte>(new LongIndex2D(n, n));
 
         var kernel = accelerator.LoadAutoGroupedStreamKernel<
-            Index2D, int, ArrayView2D<byte, Stride2D.DenseX>, ArrayView2D<byte, Stride2D.DenseX>>(WarshallIntegerStepKernel);
+            Index2D, int, ArrayView2D<byte, Stride2D.DenseX>, ArrayView2D<byte, Stride2D.DenseX>>(
+            WarshallIntegerStepKernel);
         // if (kernel.GetCompiledKernel() is PTXCompiledKernel ptxKernel) {
         //     Console.WriteLine(ptxKernel.PTXAssembly);
         // }
@@ -398,29 +373,28 @@ public class MathAccelerator : IDisposable {
         }
 
         var bufOut = reuse switch {
-            true  => a,
-            false => new byte[n, n],
+            true => a,
+            false => new byte[n, n]
         };
         rk.CopyToCPU(bufOut);
 
         return bufOut;
     }
-    
+
     public byte[,] WarshallReachabilityMatrixGrouping(byte[,] a, bool reuse = true) {
-        if (a.GetLength(0) != a.GetLength(1)) {
-            throw new ArgumentException("Matrix must be square");
-        }
+        if (a.GetLength(0) != a.GetLength(1)) throw new ArgumentException("Matrix must be square");
 
         var n = a.GetLength(0);
 
         using var rkm1 = accelerator.Allocate2DDenseX<byte>(new LongIndex2D(n, n));
         using var rk = accelerator.Allocate2DDenseX<byte>(new LongIndex2D(n, n));
-        
+
         var groupSize = new Index2D(accelerator.MaxNumThreadsPerGroup, 1);
         var numGroups = new Index2D(1, n);
 
         var kernel = accelerator.LoadStreamKernel<
-            int, ArrayView2D<byte, Stride2D.DenseX>, ArrayView2D<byte, Stride2D.DenseX>>(WarshallIntegerSimpleStepKernel);
+            int, ArrayView2D<byte, Stride2D.DenseX>, ArrayView2D<byte, Stride2D.DenseX>>(
+            WarshallIntegerSimpleStepKernel);
         // if (kernel.GetCompiledKernel() is PTXCompiledKernel ptxKernel) {
         //     Console.WriteLine(ptxKernel.PTXAssembly);
         // }
@@ -433,8 +407,8 @@ public class MathAccelerator : IDisposable {
         }
 
         var bufOut = reuse switch {
-            true  => a,
-            false => new byte[n, n],
+            true => a,
+            false => new byte[n, n]
         };
         rk.CopyToCPU(bufOut);
 
@@ -448,7 +422,7 @@ public class MathAccelerator : IDisposable {
         ArrayView2D<byte, Stride2D.DenseX> rkm1) {
         var x = index.X;
         var y = index.Y;
-        rk[x, y] = (byte) (rkm1[x, y] | (rkm1[x, k] & rkm1[k, y]));
+        rk[x, y] = (byte)(rkm1[x, y] | (rkm1[x, k] & rkm1[k, y]));
     }
 
     private static void WarshallIntegerSimpleStepKernel(
@@ -456,20 +430,16 @@ public class MathAccelerator : IDisposable {
         ArrayView2D<byte, Stride2D.DenseX> rk,
         ArrayView2D<byte, Stride2D.DenseX> rkm1) {
         ref var ky = ref SharedMemory.Allocate<byte>();
-        if (Group.IsFirstThread) {
-            ky = rkm1[k, Grid.GlobalIndex.Y];
-        }
+        if (Group.IsFirstThread) ky = rkm1[k, Grid.GlobalIndex.Y];
         Group.Barrier();
         var locKy = ky;
-        
+
         for (var offsetX = 0; offsetX < rk.IntExtent.X; offsetX += Group.DimX) {
             var globX = offsetX + Group.IdxX;
-            if (globX >= rk.IntExtent.X) {
-                break;
-            }
+            if (globX >= rk.IntExtent.X) break;
 
             var idx = new Index2D(globX, Grid.GlobalIndex.Y);
-            rk[idx] = (byte) (rkm1[idx] | (rkm1[globX, k] & locKy));
+            rk[idx] = (byte)(rkm1[idx] | (rkm1[globX, k] & locKy));
         }
     }
 
@@ -482,17 +452,13 @@ public class MathAccelerator : IDisposable {
         var globY = Grid.GlobalIndex.Y;
         ref var ky = ref SharedMemory.Allocate<int>();
 
-        if (Group.IsFirstThread) {
-            ky = rkm1[k, globY];
-        }
+        if (Group.IsFirstThread) ky = rkm1[k, globY];
 
         Group.Barrier();
         var groupX = Group.IdxX;
         for (var x = 0; x < rk.IntExtent.X; x += groupSize) {
             var globX = x + groupX;
-            if (globX >= rk.IntExtent.X) {
-                break;
-            }
+            if (globX >= rk.IntExtent.X) break;
 
             var idx = new Index2D(globX, globY);
             rk[idx] = rkm1[idx] | (rkm1[globX, k] & ky);
@@ -501,100 +467,16 @@ public class MathAccelerator : IDisposable {
         Group.Barrier();
     }
 
-    public class GroupSizeCalculator {
-        public int MaxItemsPerGroup { get; }
-        public int MaxThreadsPerGroup { get; }
-        public int MaxThreadsPerDimension { get; }
-        
-        public GroupSizeCalculator(int maxItemsPerGroup, int maxThreadsPerGroup) {
-            ArgumentOutOfRangeException.ThrowIfLessThan(maxItemsPerGroup, 1, nameof(maxItemsPerGroup));
-            ArgumentOutOfRangeException.ThrowIfLessThan(maxThreadsPerGroup, 1, nameof(maxThreadsPerGroup));
-            MaxItemsPerGroup = maxItemsPerGroup;
-            MaxThreadsPerGroup = maxThreadsPerGroup;
-            MaxThreadsPerDimension = (int) Math.Ceiling(Math.Sqrt(MaxThreadsPerGroup));
-        }
-        
-        private IEnumerable<Index2D> EnumerateDims() {
-            var step = (int)MathUtils.Gcd(MaxThreadsPerDimension, MaxItemsPerGroup);
-            for (var x = step; x <= MaxItemsPerGroup; x += step) {
-                for (var y = step; x + y <= MaxItemsPerGroup; y += step) {
-                    yield return new Index2D(x, y);
-                }
-            }
-        }
-
-        private Index2D? optimal;
-
-        [MemberNotNull(nameof(optimal))]
-        public Index2D OptimalGroupSize() {
-            if (optimal is not null) {
-                return optimal.Value;
-            }
-            optimal = EnumerateDims().MaxBy(Score);
-            return optimal.Value;
-        }
-        
-        public double DimScore(Index2D idx) {
-            return ((long) idx.X) * ((long)idx.Y) / ((double) MaxItemsPerGroup * MaxItemsPerGroup);
-        }
-        
-        public double DimScore(int x, int y) {
-            return DimScore(new Index2D(x, y));
-        }
-        
-        public double SpaceScore(Index2D idx) {
-            var diff = (double)Math.Abs(idx.X - idx.Y);
-            // Reward groups that are closer to square
-            // To scale to 1, we divide by the maximum difference
-            return (idx.X + idx.Y) / (Math.Max(diff, 1) * MaxItemsPerGroup);
-        }
-        
-        public double SpaceScore(int x, int y) {
-            return SpaceScore(new Index2D(x, y));
-        }
-        
-        public double ModuloThreadsScore(Index2D idx) {
-            var x = idx.X;
-            var y = idx.Y;
-            var xMod = x % MaxThreadsPerDimension;
-            var xModD = Math.Abs(xMod - MaxThreadsPerDimension/2.0);
-            var yMod = y % MaxThreadsPerDimension;
-            var yModD = Math.Abs(yMod - MaxThreadsPerDimension/2.0);
-            var xScore = xMod == 0 ? 1.0 : 1.0 / xModD;
-            var yScore = yMod == 0 ? 1.0 : 1.0 / yModD;
-            return Math.Max(xScore, yScore);
-        }
-        
-        public double ModuloThreadsScore(int x, int y) {
-            return ModuloThreadsScore(new Index2D(x, y));
-        }
-
-        public double Score(Index2D xy) {
-            var dimScore = DimScore(xy);
-            var spaceScore = SpaceScore(xy);
-            // var moduloThreadsScore = ModuloThreadsScore(xy);
-            ReadOnlySpan<double> scores = [dimScore, spaceScore];
-            var geometricMean = MathUtils.GeometricMean(scores);
-            return geometricMean;
-        }
-
-        public double Score(int x, int y) {
-            return Score(new Index2D(x, y));
-        }
-    }
-
     public static Index2D OptimalGroupSize(int maxItemsPerGroup, int maxThreadsPerGroup) {
         ArgumentOutOfRangeException.ThrowIfLessThan(maxItemsPerGroup, 1, nameof(maxItemsPerGroup));
         ArgumentOutOfRangeException.ThrowIfLessThan(maxThreadsPerGroup, 1, nameof(maxThreadsPerGroup));
-        var maxItemsDouble = (double) maxItemsPerGroup;
+        var maxItemsDouble = (double)maxItemsPerGroup;
         return EnumerateDims().MaxBy(Score);
 
         IEnumerable<Index2D> EnumerateDims() {
             var step = (int)MathUtils.Gcd(maxThreadsPerGroup, maxItemsPerGroup);
             for (var x = step; x <= maxItemsPerGroup; x += step) {
-                for (var y = step; x + y <= maxItemsPerGroup; y += step) {
-                    yield return new Index2D(x, y);
-                }
+                for (var y = step; x + y <= maxItemsPerGroup; y += step) yield return new Index2D(x, y);
             }
         }
 
@@ -607,10 +489,8 @@ public class MathAccelerator : IDisposable {
         double SpaceScore(Index2D idx) {
             var diff = (double)Math.Abs(idx.X - idx.Y);
 
-            if (diff == 0) {
-                return 1.0;
-            }
-            
+            if (diff == 0) return 1.0;
+
             return (idx.X + idx.Y) / diff;
         }
 
@@ -618,9 +498,9 @@ public class MathAccelerator : IDisposable {
             var x = idx.X;
             var y = idx.Y;
             var xMod = x % maxThreadsPerGroup;
-            var xModD = Math.Abs(xMod - maxThreadsPerGroup/2.0);
+            var xModD = Math.Abs(xMod - maxThreadsPerGroup / 2.0);
             var yMod = y % maxThreadsPerGroup;
-            var yModD = Math.Abs(yMod - maxThreadsPerGroup/2.0);
+            var yModD = Math.Abs(yMod - maxThreadsPerGroup / 2.0);
             var xScore = xMod == 0 ? 1.0 : 1.0 / xModD;
             var yScore = yMod == 0 ? 1.0 : 1.0 / yModD;
             return Math.Max(xScore, yScore);
@@ -637,9 +517,7 @@ public class MathAccelerator : IDisposable {
     }
 
     public float[,] WarshallReachabilityMatrixGrouping(float[,] a, bool reuse = false) {
-        if (a.GetLength(0) != a.GetLength(1)) {
-            throw new ArgumentException("Matrix must be square");
-        }
+        if (a.GetLength(0) != a.GetLength(1)) throw new ArgumentException("Matrix must be square");
 
         var n = a.GetLength(0);
         using var rkm1 = accelerator.Allocate2DDenseX<float>(new LongIndex2D(n, n));
@@ -665,7 +543,7 @@ public class MathAccelerator : IDisposable {
 
         rkm1.CopyFromCPU(a);
         for (var k = 0; k < n; k++) {
-            Console.WriteLine($"{k} of {n-1}");
+            Console.WriteLine($"{k} of {n - 1}");
             kernel(
                 new KernelConfig(numGroups, kGroupSize),
                 k,
@@ -677,16 +555,11 @@ public class MathAccelerator : IDisposable {
             rkm1.CopyFrom(rk);
         }
 
-        if (!reuse) {
-            return rk.GetAsArray2D();
-        }
+        if (!reuse) return rk.GetAsArray2D();
 
         rk.CopyToCPU(a);
         return a;
     }
-
-    private const int CudaType = (int) AcceleratorType.Cuda;
-    private const int CpuType = (int) AcceleratorType.CPU;
 
     // ReSharper disable once InvertIf
     // Each group will calculate blockSize^2 elements
@@ -707,13 +580,9 @@ public class MathAccelerator : IDisposable {
             var globIdxY = blockOffset.Y + locIdx;
             var globIdxX = blockOffset.X + locIdx;
             if (locIdx < dataSize) {
-                if (globIdxY < rkm1.IntExtent.Y) {
-                    kys[locIdx] = rkm1[k, globIdxY];
-                }
+                if (globIdxY < rkm1.IntExtent.Y) kys[locIdx] = rkm1[k, globIdxY];
 
-                if (globIdxX < rkm1.IntExtent.X) {
-                    xks[locIdx] = rkm1[globIdxX, k];
-                }
+                if (globIdxX < rkm1.IntExtent.X) xks[locIdx] = rkm1[globIdxX, k];
             }
         }
 
@@ -721,9 +590,7 @@ public class MathAccelerator : IDisposable {
 
         var dataSizeBounds = new Index2D(dataSize);
         for (var xOffset = 0; xOffset < dataSize; xOffset += Group.DimX) {
-            if (xOffset + blockOffset.X >= rkm1.IntExtent.X) {
-                break;
-            }
+            if (xOffset + blockOffset.X >= rkm1.IntExtent.X) break;
             for (var yOffset = 0; yOffset < dataSize; yOffset += Group.DimY) {
                 var locIdx = new Index2D(xOffset + grpIdx.X, yOffset + grpIdx.Y);
                 var globIdxInner = locIdx + blockOffset;
@@ -737,5 +604,83 @@ public class MathAccelerator : IDisposable {
         }
 
         Group.Barrier();
+    }
+
+    public class GroupSizeCalculator {
+        private Index2D? optimal;
+
+        public GroupSizeCalculator(int maxItemsPerGroup, int maxThreadsPerGroup) {
+            ArgumentOutOfRangeException.ThrowIfLessThan(maxItemsPerGroup, 1, nameof(maxItemsPerGroup));
+            ArgumentOutOfRangeException.ThrowIfLessThan(maxThreadsPerGroup, 1, nameof(maxThreadsPerGroup));
+            MaxItemsPerGroup = maxItemsPerGroup;
+            MaxThreadsPerGroup = maxThreadsPerGroup;
+            MaxThreadsPerDimension = (int)Math.Ceiling(Math.Sqrt(MaxThreadsPerGroup));
+        }
+
+        public int MaxItemsPerGroup { get; }
+        public int MaxThreadsPerGroup { get; }
+        public int MaxThreadsPerDimension { get; }
+
+        private IEnumerable<Index2D> EnumerateDims() {
+            var step = (int)MathUtils.Gcd(MaxThreadsPerDimension, MaxItemsPerGroup);
+            for (var x = step; x <= MaxItemsPerGroup; x += step) {
+                for (var y = step; x + y <= MaxItemsPerGroup; y += step) yield return new Index2D(x, y);
+            }
+        }
+
+        [MemberNotNull(nameof(optimal))]
+        public Index2D OptimalGroupSize() {
+            if (optimal is not null) return optimal.Value;
+            optimal = EnumerateDims().MaxBy(Score);
+            return optimal.Value;
+        }
+
+        public double DimScore(Index2D idx) {
+            return idx.X * (long)idx.Y / ((double)MaxItemsPerGroup * MaxItemsPerGroup);
+        }
+
+        public double DimScore(int x, int y) {
+            return DimScore(new Index2D(x, y));
+        }
+
+        public double SpaceScore(Index2D idx) {
+            var diff = (double)Math.Abs(idx.X - idx.Y);
+            // Reward groups that are closer to square
+            // To scale to 1, we divide by the maximum difference
+            return (idx.X + idx.Y) / (Math.Max(diff, 1) * MaxItemsPerGroup);
+        }
+
+        public double SpaceScore(int x, int y) {
+            return SpaceScore(new Index2D(x, y));
+        }
+
+        public double ModuloThreadsScore(Index2D idx) {
+            var x = idx.X;
+            var y = idx.Y;
+            var xMod = x % MaxThreadsPerDimension;
+            var xModD = Math.Abs(xMod - MaxThreadsPerDimension / 2.0);
+            var yMod = y % MaxThreadsPerDimension;
+            var yModD = Math.Abs(yMod - MaxThreadsPerDimension / 2.0);
+            var xScore = xMod == 0 ? 1.0 : 1.0 / xModD;
+            var yScore = yMod == 0 ? 1.0 : 1.0 / yModD;
+            return Math.Max(xScore, yScore);
+        }
+
+        public double ModuloThreadsScore(int x, int y) {
+            return ModuloThreadsScore(new Index2D(x, y));
+        }
+
+        public double Score(Index2D xy) {
+            var dimScore = DimScore(xy);
+            var spaceScore = SpaceScore(xy);
+            // var moduloThreadsScore = ModuloThreadsScore(xy);
+            ReadOnlySpan<double> scores = [dimScore, spaceScore];
+            var geometricMean = MathUtils.GeometricMean(scores);
+            return geometricMean;
+        }
+
+        public double Score(int x, int y) {
+            return Score(new Index2D(x, y));
+        }
     }
 }

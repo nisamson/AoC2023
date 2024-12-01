@@ -35,11 +35,20 @@ public class Lens(string name, uint focalLength) {
 public class Day15AssocList : IEnumerable<Lens> {
     private readonly List<Lens> lenses = new();
 
+    public int Count => lenses.Count;
+
+
+    public IEnumerator<Lens> GetEnumerator() {
+        return lenses.GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() {
+        return GetEnumerator();
+    }
+
     public void Upsert(Lens lens) {
         for (var i = 0; i < lenses.Count; i++) {
-            if (lenses[i].Name != lens.Name) {
-                continue;
-            }
+            if (lenses[i].Name != lens.Name) continue;
 
             lenses[i] = lens;
             return;
@@ -52,13 +61,9 @@ public class Day15AssocList : IEnumerable<Lens> {
         Remove(name.AsSpan());
     }
 
-    public int Count => lenses.Count;
-
     public void Remove(ReadOnlySpan<char> name) {
         for (var i = 0; i < lenses.Count; i++) {
-            if (!lenses[i].Name.AsSpan().Equals(name, StringComparison.Ordinal)) {
-                continue;
-            }
+            if (!lenses[i].Name.AsSpan().Equals(name, StringComparison.Ordinal)) continue;
 
             lenses.RemoveAt(i);
             return;
@@ -66,16 +71,7 @@ public class Day15AssocList : IEnumerable<Lens> {
     }
 
     public ulong Value() {
-        return (ulong) lenses.Select((l, i) => l.FocalLength * (i + 1)).Sum();
-    }
-
-
-    public IEnumerator<Lens> GetEnumerator() {
-        return lenses.GetEnumerator();
-    }
-
-    IEnumerator IEnumerable.GetEnumerator() {
-        return GetEnumerator();
+        return (ulong)lenses.Select((l, i) => l.FocalLength * (i + 1)).Sum();
     }
 
     public override string ToString() {
@@ -89,9 +85,7 @@ public class Day15HashMap {
     private readonly Day15AssocList[] buckets = new Day15AssocList[256];
 
     public Day15HashMap() {
-        for (var i = 0; i < buckets.Length; i++) {
-            buckets[i] = new Day15AssocList();
-        }
+        for (var i = 0; i < buckets.Length; i++) buckets[i] = new Day15AssocList();
     }
 
     public void Upsert(Lens lens) {
@@ -108,7 +102,7 @@ public class Day15HashMap {
         var total = 0ul;
         for (var i = 0; i < buckets.Length; i++) {
             var bucket = buckets[i];
-            var bucketTotal = bucket.Value() * (ulong) (i + 1);
+            var bucketTotal = bucket.Value() * (ulong)(i + 1);
             total += bucketTotal;
         }
 
@@ -119,17 +113,13 @@ public class Day15HashMap {
         var builder = new StringBuilder();
         for (var i = 0; i < buckets.Length; i++) {
             var bucket = buckets[i];
-            if (bucket.Count == 0) {
-                continue;
-            }
+            if (bucket.Count == 0) continue;
 
             builder.AppendLine($"Box {i}: {bucket}");
         }
 
         // Remove trailing newline
-        if (builder.Length > 0) {
-            builder.Length--;
-        }
+        if (builder.Length > 0) builder.Length--;
 
         return builder.ToString();
     }
@@ -140,7 +130,7 @@ public class Hasher {
 
     public static IEnumerable<byte> HashSeq(string input) {
         byte hash = 0;
-        foreach (var c in input) {
+        foreach (var c in input)
             switch (c) {
                 case ',':
                     yield return hash;
@@ -149,27 +139,25 @@ public class Hasher {
                 case '\n':
                     break;
                 default:
-                    hash += (byte) c;
+                    hash += (byte)c;
                     hash *= Mult;
                     break;
             }
-        }
 
         yield return hash;
     }
 
     public static byte Hash(ReadOnlySpan<char> input) {
         byte hash = 0;
-        foreach (var c in input) {
+        foreach (var c in input)
             switch (c) {
                 case '\n':
                     break;
                 default:
-                    hash += (byte) c;
+                    hash += (byte)c;
                     hash *= Mult;
                     break;
             }
-        }
 
         return hash;
     }
@@ -197,24 +185,22 @@ public class Day15 : Adventer {
         var span = Input.Text.AsSpan();
         while (span.Length > 0) {
             var idx = span.IndexOf(',');
-            if (idx == -1) {
-                idx = span.Length;
-            }
+            if (idx == -1) idx = span.Length;
 
             var lens = span[..idx];
 
-            if (idx + 1 >= span.Length) {
+            if (idx + 1 >= span.Length)
                 span = span[span.Length..];
-            } else {
+            else
                 span = span[(idx + 1)..];
-            }
 
             var idx2 = lens.IndexOfAny("=-".AsSpan());
             if (lens[idx2] == '=') {
                 var name = lens[..idx2].ToString();
                 var focalLength = uint.Parse(lens[(idx2 + 1)..]);
                 map.Upsert(new Lens(name, focalLength));
-            } else {
+            }
+            else {
                 var name = lens[..idx2];
                 map.Remove(name);
             }

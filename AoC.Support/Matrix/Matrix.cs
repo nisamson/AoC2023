@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC.Support - Matrix.cs
 // Copyright (C) 2023 Nicholas
 // 
@@ -14,14 +15,11 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #endregion
 
 using System.Numerics;
-using ILGPU;
-using ILGPU.Runtime;
 
 namespace AoC.Support.Matrix;
 
-public class Matrix<T> where T: unmanaged, INumber<T> {
-    
-}
+public class Matrix<T> where T : unmanaged, INumber<T> { }

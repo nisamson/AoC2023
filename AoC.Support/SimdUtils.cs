@@ -24,8 +24,8 @@ using CommunityToolkit.HighPerformance;
 namespace AoC.Support;
 
 public static class SimdUtils {
-    
     public static readonly int VectorByteCount = Vector<byte>.Count;
+
     public static byte[,] CalculateWarshallAlgorithm(this byte[,] buf) {
         var n = buf.GetLength(0);
         ArgumentOutOfRangeException.ThrowIfNotEqual(buf.GetLength(0), buf.GetLength(1));
@@ -51,20 +51,16 @@ public static class SimdUtils {
                     var newDest = xyv | (xkv & kyv);
                     newDest.CopyTo(destSpan[x..(x + VectorByteCount)]);
                 }
-                
-                for (; x < n; x++) {
-                    destSpan[x] = (byte) (ySpan[x] | (kSpan[x] & ky));
-                }
+
+                for (; x < n; x++) destSpan[x] = (byte)(ySpan[x] | (kSpan[x] & ky));
             }
 
-            if (k < n - 1) {
-                Buffer.BlockCopy(rk, 0, rkm1, 0, rk.Length);
-            }
+            if (k < n - 1) Buffer.BlockCopy(rk, 0, rkm1, 0, rk.Length);
         }
 
         return rk;
     }
-    
+
     public static byte[,] CalculateWarshallAlgorithmRowParallel(this byte[,] buf) {
         var n = buf.GetLength(0);
         ArgumentOutOfRangeException.ThrowIfNotEqual(buf.GetLength(0), buf.GetLength(1));
@@ -92,20 +88,16 @@ public static class SimdUtils {
                         newDest.CopyTo(destSpan[x..(x + VectorByteCount)]);
                     }
 
-                    for (; x < n; x++) {
-                        destSpan[x] = (byte) (ySpan[x] | (kSpan[x] & ky));
-                    }
+                    for (; x < n; x++) destSpan[x] = (byte)(ySpan[x] | (kSpan[x] & ky));
                 }
             );
 
-            if (k < n - 1) {
-                Buffer.BlockCopy(rk, 0, rkm1, 0, rk.Length);
-            }
+            if (k < n - 1) Buffer.BlockCopy(rk, 0, rkm1, 0, rk.Length);
         }
 
         return rk;
     }
-    
+
     public static byte[,] CalculateWarshallAlgorithmParallel(this byte[,] buf) {
         var n = buf.GetLength(0);
         ArgumentOutOfRangeException.ThrowIfNotEqual(buf.GetLength(0), buf.GetLength(1));
@@ -118,15 +110,11 @@ public static class SimdUtils {
             Enumerable.Range(0, n).AsParallel().AsUnordered().ForAll(
                 y => {
                     Enumerable.Range(0, n).AsParallel().AsUnordered().ForAll(
-                        x => {
-                            rk[y, x] = (byte) (rkm1[y, x] | (rkm1[y, k1] & rkm1[k1, x]));
-                        });
+                        x => { rk[y, x] = (byte)(rkm1[y, x] | (rkm1[y, k1] & rkm1[k1, x])); });
                 }
             );
 
-            if (k < n - 1) {
-                Buffer.BlockCopy(rk, 0, rkm1, 0, rk.Length);
-            }
+            if (k < n - 1) Buffer.BlockCopy(rk, 0, rkm1, 0, rk.Length);
         }
 
         return rk;

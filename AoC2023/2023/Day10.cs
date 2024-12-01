@@ -21,27 +21,12 @@
 using AoC.Support;
 using NetTopologySuite.Geometries;
 using QuikGraph;
-using QuikGraph.Algorithms;
-using QuikGraph.Algorithms.Search;
-using AoC2023;
 
 namespace AoC2023._2023;
 
 using Vertex = Vertex<int>;
 
-class PipeGrid {
-    public Vertex Start { get; }
-    
-    public int VertexToCoords(Vertex vertex) {
-        return (int) (vertex.Y * Height + vertex.X);
-    }
-
-    public int Height { get; }
-    public int Width { get; }
-    public int VertexCount => Height * Width;
-
-    private BidirectionalGraph<Vertex, Edge<Vertex>> Graph { get; }
-
+internal class PipeGrid {
     public PipeGrid(IReadOnlyList<string> input) {
         Height = input.Count;
         Width = input[0].Length;
@@ -51,15 +36,11 @@ class PipeGrid {
             for (var x = 0; x < Width; x++) {
                 var vertex = new Vertex(x, y);
                 var c = line[x];
-                if (c == 'S') {
-                    Start = vertex;
-                }
+                if (c == 'S') Start = vertex;
 
-                foreach (var vertexNeighbor in ConnectedDirections(c).Select(vertex.GetNeighbor)) {
-                    if (vertexNeighbor.ExistsInGrid(Width, Height)) {
+                foreach (var vertexNeighbor in ConnectedDirections(c).Select(vertex.GetNeighbor))
+                    if (vertexNeighbor.ExistsInGrid(Width, Height))
                         Graph.AddVerticesAndEdge(new Edge<Vertex>(vertex, vertexNeighbor));
-                    }
-                }
             }
         }
 
@@ -70,31 +51,35 @@ class PipeGrid {
         }
     }
 
+    public Vertex Start { get; }
+
+    public int Height { get; }
+    public int Width { get; }
+    public int VertexCount => Height * Width;
+
+    private BidirectionalGraph<Vertex, Edge<Vertex>> Graph { get; }
+
+    public int VertexToCoords(Vertex vertex) {
+        return vertex.Y * Height + vertex.X;
+    }
+
     public static IEnumerable<Direction> ConnectedDirections(char c) {
         // Up
-        if (c is '|' or 'L' or 'J') {
-            yield return Direction.Up;
-        }
-        
+        if (c is '|' or 'L' or 'J') yield return Direction.Up;
+
         // Down
-        if (c is '|' or 'F' or '7') {
-            yield return Direction.Down;
-        }
-        
+        if (c is '|' or 'F' or '7') yield return Direction.Down;
+
         // Left
-        if (c is '-' or 'J' or '7') {
-            yield return Direction.Left;
-        }
-        
+        if (c is '-' or 'J' or '7') yield return Direction.Left;
+
         // Right
-        if (c is '-' or 'L' or 'F') {
-            yield return Direction.Right;
-        }
+        if (c is '-' or 'L' or 'F') yield return Direction.Right;
     }
 
     public int DistanceToFarthestFromStart() {
         var distances = DistancesFromStart();
-        
+
         return distances.Values.Max();
     }
 
@@ -106,9 +91,7 @@ class PipeGrid {
         while (frontier.Count > 0) {
             var current = frontier.Dequeue();
             foreach (var neighbor in Graph.OutEdges(current).Select(edge => edge.Target)) {
-                if (distances.ContainsKey(neighbor)) {
-                    continue;
-                }
+                if (distances.ContainsKey(neighbor)) continue;
 
                 frontier.Enqueue(neighbor);
                 distances[neighbor] = distances[current] + 1;
@@ -129,26 +112,26 @@ class PipeGrid {
             current = next;
         }
     }
-    
+
     public Polygon GetMainLoopPolygon() {
         var ring = GetMainLoopRing().Append(Start).Select(vertex => new Coordinate(vertex.X, vertex.Y)).ToArray();
         return new Polygon(new LinearRing(ring));
     }
-    
+
     public IEnumerable<Vertex> VerticesInsideLoop() {
         var loop = GetMainLoopPolygon();
         for (var y = 0; y < Height; y++) {
             for (var x = 0; x < Width; x++) {
                 var vertex = new Vertex(x, y);
-                if (loop.Contains(new Point(vertex.X, vertex.Y))) {
-                    yield return vertex;
-                }
+                if (loop.Contains(new Point(vertex.X, vertex.Y))) yield return vertex;
             }
         }
     }
 }
 
 public class Day10 : Adventer {
+    private PipeGrid grid;
+
     public Day10() {
         Bag["test"] = """
                       FF7FSF7F7F7F7F7F---7
@@ -163,8 +146,6 @@ public class Day10 : Adventer {
                       L7JLJL-JLJLJL--JLJ.L
                       """;
     }
-
-    private PipeGrid grid;
 
     protected override void InternalOnLoad() {
         grid = new PipeGrid(Input.Lines);

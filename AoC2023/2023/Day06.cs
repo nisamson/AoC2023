@@ -23,61 +23,59 @@ using AoC.Support;
 
 namespace AoC2023._2023;
 
-    public class Day06 : Adventer {
-        public Day06() {
-            Bag["test"] = """
-                          Time:      7  15   30
-                          Distance:  9  40  200
-                          """;
-        }
-        class Race {
-            public long Time { get; init; }
-            public long Distance { get; init; }
+public class Day06 : Adventer {
+    private ImmutableArray<Race> races;
 
-            public IEnumerable<long> GetDistances() {
-                for (var i = 0; i < Time; i++) {
-                    yield return GetDistanceForChargeTime(i);
-                }
-            }
+    public Day06() {
+        Bag["test"] = """
+                      Time:      7  15   30
+                      Distance:  9  40  200
+                      """;
+    }
 
-            public IEnumerable<long> GetRecordBreakingDistancesPar() {
-                return IterUtils.Range(0, Time).AsParallel().Select(GetDistanceForChargeTime).Where(d => d > Distance);
-            }
+    protected override void InternalOnLoad() {
+        var times = Input.Lines[0][5..]
+            .Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(int.Parse);
+        var distances = Input.Lines[1][9..]
+            .Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .Select(int.Parse);
+        races = times.Zip(distances).Select((tuple, i) => new Race { Distance = tuple.Second, Time = tuple.First })
+            .ToImmutableArray();
+    }
 
-            public IEnumerable<long> GetRecordBreakingDistances() {
-                return GetDistances().Where(dist => dist > Distance);
-            }
+    protected override object InternalPart1() {
+        return races.Select(r => r.GetRecordBreakingDistances().Count()).Product();
+    }
 
-            public long GetDistanceForChargeTime(long chargeTime) {
-                if (chargeTime > Time) {
-                    return 0;
-                }
+    protected override object InternalPart2() {
+        var race = new Race {
+            Distance = long.Parse(races.Select(r => r.Distance).Aggregate("", (s, i) => $"{s}{i}")),
+            Time = long.Parse(races.Select(r => r.Time).Aggregate("", (s, i) => $"{s}{i}"))
+        };
+        return race.GetRecordBreakingDistances().Count();
+    }
 
-                return chargeTime * (Time - chargeTime);
-            }
-        }
+    private class Race {
+        public long Time { get; init; }
+        public long Distance { get; init; }
 
-        private ImmutableArray<Race> races;
-
-        protected override void InternalOnLoad() {
-            var times = Input.Lines[0][5..]
-                .Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                .Select(int.Parse);
-            var distances = Input.Lines[1][9..]
-                .Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                .Select(int.Parse);
-            races = times.Zip(distances).Select((tuple, i) => new Race{Distance = tuple.Second, Time=tuple.First}).ToImmutableArray();
+        public IEnumerable<long> GetDistances() {
+            for (var i = 0; i < Time; i++) yield return GetDistanceForChargeTime(i);
         }
 
-        protected override object InternalPart1() {
-            return races.Select(r => r.GetRecordBreakingDistances().Count()).Product();
+        public IEnumerable<long> GetRecordBreakingDistancesPar() {
+            return IterUtils.Range(0, Time).AsParallel().Select(GetDistanceForChargeTime).Where(d => d > Distance);
         }
 
-        protected override object InternalPart2() {
-            var race = new Race {
-                Distance = long.Parse(races.Select(r => r.Distance).Aggregate("", (s, i) => $"{s}{i}")),
-                Time = long.Parse(races.Select(r => r.Time).Aggregate("", (s, i) => $"{s}{i}")),
-            };
-            return race.GetRecordBreakingDistances().Count();
+        public IEnumerable<long> GetRecordBreakingDistances() {
+            return GetDistances().Where(dist => dist > Distance);
+        }
+
+        public long GetDistanceForChargeTime(long chargeTime) {
+            if (chargeTime > Time) return 0;
+
+            return chargeTime * (Time - chargeTime);
         }
     }
+}

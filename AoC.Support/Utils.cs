@@ -37,9 +37,7 @@ public static class IterUtils {
                 continue;
             }
 
-            if (!comparer.Equals(item, first)) {
-                return false;
-            }
+            if (!comparer.Equals(item, first)) return false;
         }
 
         return true;
@@ -61,9 +59,7 @@ public static class IterUtils {
     }
 
     public static void Consume<T>(this IEnumerable<T> source, Action<T> action) {
-        foreach (var item in source) {
-            action(item);
-        }
+        foreach (var item in source) action(item);
     }
 
     public static void Consume<T>(this ParallelQuery<T> source, Action<T> action) {
@@ -72,16 +68,15 @@ public static class IterUtils {
 
     public static void Consume<T>(this IEnumerable<T> source, Action<T, int> action) {
         var i = 0;
-        foreach (var item in source) {
-            action(item, i++);
-        }
+        foreach (var item in source) action(item, i++);
     }
 
     public static TNumeric Product<TNumeric>(this IEnumerable<TNumeric> source) where TNumeric : INumber<TNumeric> {
         return source.Aggregate(TNumeric.One, (current, item) => current * item);
     }
 
-    public static TNumeric Product<TSource, TNumeric>(this IEnumerable<TSource> source, Func<TSource, TNumeric> selector)
+    public static TNumeric Product<TSource, TNumeric>(this IEnumerable<TSource> source,
+        Func<TSource, TNumeric> selector)
         where TNumeric : INumber<TNumeric> {
         return source.Select(selector).Product();
     }
@@ -95,16 +90,16 @@ public static class IterUtils {
                 yield break;
         }
 
-        for (var i = start; i <= max; i++) {
-            yield return i;
-        }
+        for (var i = start; i <= max; i++) yield return i;
     }
 
     public static IDictionary<T, U> ToDictionary<T, U>(this IEnumerable<(T, U)> source) where T : notnull {
         return source.ToDictionary(x => x.Item1, x => x.Item2);
     }
 
-    public static T Identity<T>(T x) => x;
+    public static T Identity<T>(T x) {
+        return x;
+    }
 
     public static IEnumerable<(T, T)> CartesianProduct<T>(this IEnumerable<T> source) {
         var list = source.ToList();
@@ -113,9 +108,7 @@ public static class IterUtils {
 
     public static IEnumerable<(T, T)> CartesianProduct<T>(this IReadOnlyList<T> source) {
         for (var i = 0; i < source.Count; i++) {
-            for (var j = i + 1; j < source.Count; j++) {
-                yield return (source[i], source[j]);
-            }
+            for (var j = i + 1; j < source.Count; j++) yield return (source[i], source[j]);
         }
     }
 
@@ -134,9 +127,7 @@ public static class IterUtils {
             }
         }
 
-        while (i < source.Length) {
-            yield return Splitter(source);
-        }
+        while (i < source.Length) yield return Splitter(source);
     }
 
     public static IEnumerable<T> Once<T>(this T item) {
@@ -144,45 +135,33 @@ public static class IterUtils {
     }
 
     public static IEnumerable<T> EnumerateRow<T>(this T[,] source, int row) {
-        for (var i = 0; i < source.GetLength(1); i++) {
-            yield return source[row, i];
-        }
+        for (var i = 0; i < source.GetLength(1); i++) yield return source[row, i];
     }
 
     public static IEnumerable<T> EnumerateColumn<T>(this T[,] source, int column) {
-        for (var i = 0; i < source.GetLength(0); i++) {
-            yield return source[i, column];
-        }
+        for (var i = 0; i < source.GetLength(0); i++) yield return source[i, column];
     }
 
     public static IEnumerable<IEnumerable<T>> EnumerateRows<T>(this T[,] source) {
-        for (var i = 0; i < source.GetLength(0); i++) {
-            yield return source.EnumerateRow(i);
-        }
+        for (var i = 0; i < source.GetLength(0); i++) yield return source.EnumerateRow(i);
     }
 
     public static IEnumerable<IEnumerable<T>> EnumerateColumns<T>(this T[,] source) {
-        for (var i = 0; i < source.GetLength(1); i++) {
-            yield return source.EnumerateColumn(i);
-        }
+        for (var i = 0; i < source.GetLength(1); i++) yield return source.EnumerateColumn(i);
     }
 
     public static IEnumerable<T> EnumerateRowMajor<T>(this T[,] source) {
         for (var i = 0; i < source.GetLength(0); i++) {
-            for (var j = 0; j < source.GetLength(1); j++) {
-                yield return source[i, j];
-            }
+            for (var j = 0; j < source.GetLength(1); j++) yield return source[i, j];
         }
     }
 
     public static IEnumerable<T> EnumerateColumnMajor<T>(this T[,] source) {
         for (var i = 0; i < source.GetLength(1); i++) {
-            for (var j = 0; j < source.GetLength(0); j++) {
-                yield return source[j, i];
-            }
+            for (var j = 0; j < source.GetLength(0); j++) yield return source[j, i];
         }
     }
-    
+
     public static bool IsEmpty<T>(this IEnumerable<T> source) {
         return !source.Any();
     }
@@ -194,15 +173,15 @@ public static class IterUtils {
     public static bool IsEmpty<T>(this IList<T> source) {
         return source.Count == 0;
     }
-    
+
     public static bool IsEmpty<T>(this IReadOnlyCollection<T> source) {
         return source.Count == 0;
     }
-    
+
     public static bool IsEmpty<T>(this IReadOnlyList<T> source) {
         return source.Count == 0;
     }
-    
+
     public static bool IsEmpty<T>(this T[] source) {
         return source.Length == 0;
     }
@@ -210,79 +189,77 @@ public static class IterUtils {
     public static bool IsEmpty<T>(this Span<T> source) {
         return source.IsEmpty;
     }
-    
+
     public static bool IsEmpty<T>(this ReadOnlySpan<T> source) {
         return source.IsEmpty;
     }
-    
+
     public static bool IsEmpty<T>(this Memory<T> source) {
         return source.IsEmpty;
     }
-    
+
     public static bool IsEmpty<T>(this ReadOnlyMemory<T> source) {
         return source.IsEmpty;
     }
-    
+
     public static bool IsNotEmpty<T>(this IEnumerable<T> source) {
         return source.Any();
     }
-    
+
     public static bool IsNotEmpty<T>(this ICollection<T> source) {
         return source.Count != 0;
     }
-    
+
     public static bool IsNotEmpty<T>(this IList<T> source) {
         return source.Count != 0;
     }
-    
+
     public static bool IsNotEmpty<T>(this IReadOnlyCollection<T> source) {
         return source.Count != 0;
     }
-    
+
     public static bool IsNotEmpty<T>(this IReadOnlyList<T> source) {
         return source.Count != 0;
     }
-    
+
     public static bool IsNotEmpty<T>(this T[] source) {
         return source.Length != 0;
     }
-    
+
     public static bool IsNotEmpty<T>(this Span<T> source) {
         return !source.IsEmpty;
     }
-    
+
     public static bool IsNotEmpty<T>(this ReadOnlySpan<T> source) {
         return !source.IsEmpty;
     }
-    
+
     public static bool IsNotEmpty<T>(this Memory<T> source) {
         return !source.IsEmpty;
     }
-    
+
     public static bool IsNotEmpty<T>(this ReadOnlyMemory<T> source) {
         return !source.IsEmpty;
     }
-    
+
     public static ReadOnlySpan<T> AsReadOnlySpan<T>(this Span<T> source) {
         return source;
     }
-    
+
     public static ReadOnlySpan<T> AsReadOnlySpan<T>(this Memory<T> source) {
         return source.Span;
     }
-    
+
     public static ReadOnlySpan<T> AsReadOnlySpan<T>(this ReadOnlyMemory<T> source) {
         return source.Span;
     }
-    
+
     public static ReadOnlySpan<T> AsReadOnlySpan<T>(this T[] source) {
         return source;
     }
-    
+
     public static void EnqueueAll<T>(this Queue<T> queue, IEnumerable<T> items) {
-        foreach (var item in items) {
-            queue.Enqueue(item);
-        }
+        foreach (var item in items) queue.Enqueue(item);
     }
 }
 
@@ -309,19 +286,23 @@ public static class MathUtils {
         return TOther.CreateChecked(x);
     }
 
-    public static TOther IntoTruncating<TOther, T>(this T x) where T : INumberBase<T> where TOther : INumberBase<TOther> {
+    public static TOther IntoTruncating<TOther, T>(this T x)
+        where T : INumberBase<T> where TOther : INumberBase<TOther> {
         return TOther.CreateTruncating(x);
     }
 
-    public static TOther IntoSaturating<TOther, T>(this T x) where T : INumberBase<T> where TOther : INumberBase<TOther> {
+    public static TOther IntoSaturating<TOther, T>(this T x)
+        where T : INumberBase<T> where TOther : INumberBase<TOther> {
         return TOther.CreateSaturating(x);
     }
 
-    public static Matrix<TNumeric> ToBoolean<TNumeric>(this Matrix<TNumeric> matrix) where TNumeric : struct, INumber<TNumeric> {
+    public static Matrix<TNumeric> ToBoolean<TNumeric>(this Matrix<TNumeric> matrix)
+        where TNumeric : struct, INumber<TNumeric> {
         return matrix.Map(x => x != TNumeric.Zero ? TNumeric.One : TNumeric.Zero);
     }
 
-    public static Matrix<TNumeric> ToBooleanInplace<TNumeric>(this Matrix<TNumeric> matrix) where TNumeric : struct, INumber<TNumeric> {
+    public static Matrix<TNumeric> ToBooleanInplace<TNumeric>(this Matrix<TNumeric> matrix)
+        where TNumeric : struct, INumber<TNumeric> {
         matrix.MapInplace(x => x != TNumeric.Zero ? TNumeric.One : TNumeric.Zero);
         return matrix;
     }
@@ -343,9 +324,7 @@ public static class MathUtils {
     public static Matrix<TNumeric> ToMatrix<TNumeric>(this byte[,] matrix) where TNumeric : struct, INumber<TNumeric> {
         var res = Matrix<TNumeric>.Build.Dense(matrix.GetLength(0), matrix.GetLength(1));
         for (var i = 0; i < matrix.GetLength(0); i++) {
-            for (var j = 0; j < matrix.GetLength(1); j++) {
-                res[i, j] = TNumeric.CreateChecked(matrix[i, j]);
-            }
+            for (var j = 0; j < matrix.GetLength(1); j++) res[i, j] = TNumeric.CreateChecked(matrix[i, j]);
         }
 
         return res;
@@ -356,31 +335,27 @@ public static class MathUtils {
             .Select(grp => new { Count = grp.Count(), Sum = grp.Sum(i => 1f / double.CreateChecked(i)) });
         return info.Sum(i => i.Count / i.Sum);
     }
-    
+
     public static double GeometricMean<TNumeric>(this IEnumerable<TNumeric> n) where TNumeric : INumber<TNumeric> {
         var info = n
             .Observe(
-                n => {
-                    ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(n, TNumeric.Zero);
-                }
+                n => { ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(n, TNumeric.Zero); }
             )
             .Select(double.CreateChecked)
             .GroupBy(_ => 1)
             .Select(grp => new { Count = grp.Count(), LogSum = grp.Sum(Math.Log) })
             .FirstOrDefault(new { Count = 0, LogSum = 0.0 });
         ArgumentOutOfRangeException.ThrowIfLessThan(info.Count, 1);
-        return Math.Exp((info.LogSum / info.Count)).CheckedNotNaN();
+        return Math.Exp(info.LogSum / info.Count).CheckedNotNaN();
     }
-    
+
     public static TNumeric CheckedNotNaN<TNumeric>(this TNumeric n) where TNumeric : INumber<TNumeric> {
         // ReSharper disable once EqualExpressionComparison
-        if (n != n) {
-            throw new ArithmeticException("Found NaN");
-        }
+        if (n != n) throw new ArithmeticException("Found NaN");
 
         return n;
     }
-    
+
     public static double GeometricMean<TNumeric>(params TNumeric[] n) where TNumeric : INumber<TNumeric> {
         return GeometricMean(new ReadOnlySpan<TNumeric>(n));
     }
@@ -390,16 +365,14 @@ public static class MathUtils {
         var prod = TNumeric.One;
         ArgumentOutOfRangeException.ThrowIfLessThan(cnt, 1, "n.Length");
         foreach (var x in n) {
-            if (x <= TNumeric.Zero) {
-                throw new ArgumentOutOfRangeException(nameof(n), x, "Must be positive");
-            }
+            if (x <= TNumeric.Zero) throw new ArgumentOutOfRangeException(nameof(n), x, "Must be positive");
 
             prod *= x;
         }
 
-        return Math.Pow(double.CreateSaturating(prod), 1/(double) cnt);
+        return Math.Pow(double.CreateSaturating(prod), 1 / (double)cnt);
     }
-    
+
     public static TNumeric BooleanToNumeric<TNumeric>(this bool b) where TNumeric : INumber<TNumeric> {
         return b ? TNumeric.One : TNumeric.Zero;
     }
@@ -407,24 +380,21 @@ public static class MathUtils {
 
 public class Grid<TItem> {
     // Row-major order
-    private TItem[] items;
-    public int Width { get; }
-    public int Height { get; }
-    public int Size => Width * Height;
+    private readonly TItem[] items;
 
     public Grid(int width, int height, IEnumerable<TItem>? items = null) {
         Width = width;
         Height = height;
         this.items = new TItem[Size];
-        if (items == null) {
-            return;
-        }
+        if (items == null) return;
 
         var i = 0;
-        foreach (var item in items) {
-            this.items[i++] = item;
-        }
+        foreach (var item in items) this.items[i++] = item;
     }
+
+    public int Width { get; }
+    public int Height { get; }
+    public int Size => Width * Height;
 
     public TItem this[int x, int y] {
         get => items[x + y * Width];
@@ -449,25 +419,18 @@ public readonly struct StrideSpan<TItem> : IEnumerable<TItem> {
     private readonly TItem[] items;
     private readonly int stride;
     private readonly int offset;
-    private readonly int count;
 
     public StrideSpan(TItem[] items, int stride, int offset, int count) {
-        if (stride < 1) {
-            throw new ArgumentOutOfRangeException(nameof(stride));
-        }
+        if (stride < 1) throw new ArgumentOutOfRangeException(nameof(stride));
 
-        if (offset < 0 || offset >= items.Length) {
-            throw new ArgumentOutOfRangeException(nameof(offset));
-        }
+        if (offset < 0 || offset >= items.Length) throw new ArgumentOutOfRangeException(nameof(offset));
 
-        if (count < 0 || offset + count * stride > items.Length) {
-            throw new ArgumentOutOfRangeException(nameof(count));
-        }
+        if (count < 0 || offset + count * stride > items.Length) throw new ArgumentOutOfRangeException(nameof(count));
 
         this.items = items;
         this.stride = stride;
         this.offset = offset;
-        this.count = count;
+        this.Length = count;
     }
 
     public TItem this[int index] {
@@ -477,19 +440,15 @@ public readonly struct StrideSpan<TItem> : IEnumerable<TItem> {
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private int CheckBounds(int index) {
-        if (index < 0 || index >= count) {
-            throw new ArgumentOutOfRangeException(nameof(index));
-        }
+        if (index < 0 || index >= Length) throw new ArgumentOutOfRangeException(nameof(index));
 
         return index;
     }
 
-    public int Length => count;
+    public int Length { get; }
 
     public IEnumerator<TItem> GetEnumerator() {
-        for (var i = 0; i < count; i++) {
-            yield return this[i];
-        }
+        for (var i = 0; i < Length; i++) yield return this[i];
     }
 
     IEnumerator IEnumerable.GetEnumerator() {

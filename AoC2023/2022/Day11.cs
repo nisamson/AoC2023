@@ -20,7 +20,6 @@
 
 using System.Linq.Expressions;
 using AoC.Support;
-using AoC2023._2023;
 using Farkle;
 using Farkle.Builder;
 
@@ -29,12 +28,66 @@ namespace AoC2023._2022;
 using OperationExpr = Expression<Func<int, int>>;
 
 public class Day11 : Adventer {
-    public readonly record struct Throw(int Destination, int Item);
-
     public enum Op {
         Mul,
-        Add,
+        Add
     }
+
+    private List<Monkey> monkeys = [];
+
+    public Day11() {
+        Bag["test"] = """
+                      Monkey 0:
+                        Starting items: 79, 98
+                        Operation: new = old * 19
+                        Test: divisible by 23
+                          If true: throw to monkey 2
+                          If false: throw to monkey 3
+
+                      Monkey 1:
+                        Starting items: 54, 65, 75, 74
+                        Operation: new = old + 6
+                        Test: divisible by 19
+                          If true: throw to monkey 2
+                          If false: throw to monkey 0
+
+                      Monkey 2:
+                        Starting items: 79, 60, 97
+                        Operation: new = old * old
+                        Test: divisible by 13
+                          If true: throw to monkey 1
+                          If false: throw to monkey 3
+
+                      Monkey 3:
+                        Starting items: 74
+                        Operation: new = old + 3
+                        Test: divisible by 17
+                          If true: throw to monkey 0
+                          If false: throw to monkey 1
+                      """;
+    }
+
+    protected override void InternalOnLoad() {
+        var res = Lang.Runtime.Parse(Input.Text);
+        if (res.IsError) throw new Exception($"Parse error: ${res.ErrorValue}");
+
+        monkeys = res.ResultValue.Select(m => new Monkey(m)).ToList();
+    }
+
+    protected override object InternalPart1() {
+        var businessMonkeys = monkeys.Select(m => m.ToBusinessMonkey()).ToList();
+        var monkeyBusiness = new MonkeyBusiness(businessMonkeys);
+        monkeyBusiness.Run(20);
+        return businessMonkeys.OrderByDescending(b => b.ItemsInspected)
+            .Take(2)
+            .Product(b => b.ItemsInspected);
+    }
+
+    protected override object InternalPart2() {
+        throw new NotImplementedException();
+    }
+
+    public readonly record struct Throw(int Destination, int Item);
 
     public abstract record AstNode;
 
@@ -44,7 +97,7 @@ public class Day11 : Adventer {
 
     public abstract record OperandNode : AstNode {
         public abstract Expression ToExpression(Expression param);
-    };
+    }
 
     public record IntOperandNode(int Value) : OperandNode {
         public override Expression ToExpression(Expression param) {
@@ -62,8 +115,15 @@ public class Day11 : Adventer {
 
 
     public record Monkey {
+        private readonly List<int> items;
+
+        public Monkey(MonkeyNode node) {
+            Id = node.Id;
+            items = [..node.StartingItems];
+            OperateAndThrow = CreateOperationAndThrow(node.test, node.op).Compile();
+        }
+
         public int Id { get; }
-        private List<int> items;
         public IReadOnlyList<int> Items => items;
         public Func<int, Throw> OperateAndThrow { get; }
 
@@ -72,7 +132,8 @@ public class Day11 : Adventer {
             var trueDest = testNode.TrueDest;
             var falseDest = testNode.FalseDest;
             var param = Expression.Parameter(typeof(int), "item");
-            var testExpr = Expression.Equal(Expression.Modulo(param, Expression.Constant(testNum)), Expression.Constant(0));
+            var testExpr = Expression.Equal(Expression.Modulo(param, Expression.Constant(testNum)),
+                Expression.Constant(0));
             var trueExpr = Expression.Constant(trueDest);
             var falseExpr = Expression.Constant(falseDest);
             var ifExpr = Expression.Condition(testExpr, trueExpr, falseExpr);
@@ -87,7 +148,7 @@ public class Day11 : Adventer {
             var opExpr = op switch {
                 Op.Mul => Expression.Multiply(param, operand.ToExpression(param)),
                 Op.Add => Expression.Add(param, operand.ToExpression(param)),
-                _      => throw new ArgumentOutOfRangeException(nameof(op), op, "Invalid operation"),
+                _ => throw new ArgumentOutOfRangeException(nameof(op), op, "Invalid operation")
             };
             var divThree = Expression.Divide(opExpr, Expression.Constant(3));
             var lambda = Expression.Lambda<Func<int, int>>(divThree, param);
@@ -100,26 +161,21 @@ public class Day11 : Adventer {
             var param = Expression.Parameter(typeof(int), "item");
             var opExpr = Expression.Invoke(op, param);
             var worryVar = Expression.Variable(typeof(int), "newWorry");
-            
+
             var worryAssign = Expression.Assign(worryVar, opExpr);
             var throwExpr = Expression.Invoke(throwOp, worryVar);
             var destVar = Expression.Variable(typeof(int), "dest");
             var destAssign = Expression.Assign(destVar, throwExpr);
-            var consType = typeof(Throw).GetConstructor([typeof(int), typeof(int)]) ?? throw new InvalidOperationException();
+            var consType = typeof(Throw).GetConstructor([typeof(int), typeof(int)]) ??
+                           throw new InvalidOperationException();
             var newThrow = Expression.New(consType, destVar, worryVar);
-            var body = Expression.Block(new[] {worryVar, destVar}, worryAssign, destAssign, newThrow);
+            var body = Expression.Block(new[] { worryVar, destVar }, worryAssign, destAssign, newThrow);
             var lambda = Expression.Lambda<Func<int, Throw>>(body, param);
             return lambda;
         }
 
-        public Monkey(MonkeyNode node) {
-            Id = node.Id;
-            items = [..node.StartingItems];
-            OperateAndThrow = CreateOperationAndThrow(node.test, node.op).Compile();
-        }
-
         public BusinessMonkey ToBusinessMonkey() {
-            return new(Id, items, OperateAndThrow);
+            return new BusinessMonkey(Id, items, OperateAndThrow);
         }
     }
 
@@ -134,9 +190,7 @@ public class Day11 : Adventer {
         }
 
         public Throw? NextItem() {
-            if (!Items.TryDequeue(out var item)) {
-                return null;
-            }
+            if (!Items.TryDequeue(out var item)) return null;
 
             ItemsInspected++;
             var dest = OperateAndThrow(item);
@@ -148,13 +202,10 @@ public class Day11 : Adventer {
         public IReadOnlyList<BusinessMonkey> Monkeys { get; } = monkeys.ToList();
 
         public void Run(int rounds) {
-            while (rounds-- > 0) {
-                foreach (var monkey in Monkeys) {
-                    while (monkey.NextItem() is { } @throw) {
+            while (rounds-- > 0)
+                foreach (var monkey in Monkeys)
+                    while (monkey.NextItem() is { } @throw)
                         Monkeys[@throw.Destination].Catch(@throw.Item);
-                    }
-                }
-            }
         }
     }
 
@@ -243,61 +294,5 @@ public class Day11 : Adventer {
             Designtime = monkeyList.CaseSensitive().MarkForPrecompile();
             Runtime = Designtime.Build();
         }
-    }
-
-    private List<Monkey> monkeys = [];
-
-    protected override void InternalOnLoad() {
-        var res = Lang.Runtime.Parse(Input.Text);
-        if (res.IsError) {
-            throw new Exception($"Parse error: ${res.ErrorValue}");
-        }
-
-        monkeys = res.ResultValue.Select(m => new Monkey(m)).ToList();
-    }
-
-    protected override object InternalPart1() {
-        var businessMonkeys = monkeys.Select(m => m.ToBusinessMonkey()).ToList();
-        var monkeyBusiness = new MonkeyBusiness(businessMonkeys);
-        monkeyBusiness.Run(20);
-        return businessMonkeys.OrderByDescending(b => b.ItemsInspected)
-            .Take(2)
-            .Product(b => b.ItemsInspected);
-    }
-
-    protected override object InternalPart2() {
-        throw new NotImplementedException();
-    }
-
-    public Day11() {
-        Bag["test"] = """
-                      Monkey 0:
-                        Starting items: 79, 98
-                        Operation: new = old * 19
-                        Test: divisible by 23
-                          If true: throw to monkey 2
-                          If false: throw to monkey 3
-
-                      Monkey 1:
-                        Starting items: 54, 65, 75, 74
-                        Operation: new = old + 6
-                        Test: divisible by 19
-                          If true: throw to monkey 2
-                          If false: throw to monkey 0
-
-                      Monkey 2:
-                        Starting items: 79, 60, 97
-                        Operation: new = old * old
-                        Test: divisible by 13
-                          If true: throw to monkey 1
-                          If false: throw to monkey 3
-
-                      Monkey 3:
-                        Starting items: 74
-                        Operation: new = old + 3
-                        Test: divisible by 17
-                          If true: throw to monkey 0
-                          If false: throw to monkey 1
-                      """;
     }
 }

@@ -18,10 +18,8 @@
 
 #endregion
 
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using ILGPU;
-using MathNet.Numerics;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Single;
 using QuikGraph;
@@ -30,28 +28,28 @@ namespace AoC.Support;
 
 using Vertex = Vertex<int>;
 
-public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVertex, TEdge>, IMutableBidirectionalGraph<TVertex, TEdge> where TEdge: IEdge<TVertex> {
+public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVertex, TEdge>,
+    IMutableBidirectionalGraph<TVertex, TEdge> where TEdge : IEdge<TVertex> {
+    private readonly Func<TVertex, TVertex, TEdge> edgeFactory;
+    private readonly Func<int, TVertex> indexToVertex;
     private readonly Matrix<float> matrix;
     private readonly Func<TVertex, int> vertexToIndex;
-    private readonly Func<int, TVertex> indexToVertex;
-    private readonly Func<TVertex, TVertex, TEdge> edgeFactory;
 
     public BidirectionalMatrixGraph(int vertexCount,
         Func<TVertex, int> vertexToIndex,
         Func<int, TVertex> indexToVertex,
         Func<TVertex, TVertex, TEdge> edgeFactory,
         bool sparse = true) {
-        if (sparse) {
+        if (sparse)
             matrix = SparseMatrix.Create(vertexCount, vertexCount, 0);
-        } else {
+        else
             matrix = DenseMatrix.Create(vertexCount, vertexCount, 0);
-        }
 
         this.vertexToIndex = vertexToIndex;
         this.indexToVertex = indexToVertex;
         this.edgeFactory = edgeFactory;
     }
-    
+
     private BidirectionalMatrixGraph(Matrix<float> matrix,
         Func<TVertex, int> vertexToIndex,
         Func<int, TVertex> indexToVertex,
@@ -60,33 +58,6 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
         this.vertexToIndex = vertexToIndex;
         this.indexToVertex = indexToVertex;
         this.edgeFactory = edgeFactory;
-    }
-
-    public static BidirectionalMatrixGraph<Vertex, Edge<Vertex>> ForVertices(int rows,
-        int columns,
-        bool columnMajor = true,
-        bool sparse = true) {
-        var indexToVertex = columnMajor switch {
-            true  => (Func<int, Vertex>) (i => Vertex.FromColumnMajorIndex(i, rows)),
-            false => (Func<int, Vertex>) (i => Vertex.FromRowMajorIndex(i, columns)),
-        };
-
-        var vertexToIndex = columnMajor switch {
-            true  => (Func<Vertex, int>) (v => v.ColumnMajorIndex(rows)),
-            false => (Func<Vertex, int>) (v => v.RowMajorIndex(columns)),
-        };
-
-        return new BidirectionalMatrixGraph<Vertex, Edge<Vertex>>(rows * columns, vertexToIndex, indexToVertex, (s, t) => new Edge<Vertex>(s, t), sparse);
-    }
-
-    public static BidirectionalMatrixGraph<TVertex, TEdge> FromGraph(IBidirectionalGraph<TVertex, TEdge> g,
-        Func<TVertex, int> vertexToIndex,
-        Func<int, TVertex> indexToVertex,
-        Func<TVertex, TVertex, TEdge> edgeFactory,
-        bool sparse = true) {
-        var res = new BidirectionalMatrixGraph<TVertex, TEdge>(g.VertexCount, vertexToIndex, indexToVertex, edgeFactory, sparse);
-        res.AddEdgeRange(g.Edges);
-        return res;
     }
 
     public bool IsDirected => true;
@@ -151,7 +122,7 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
             return false;
         }
 
-        edges = new[] {edgeFactory(source, target)};
+        edges = new[] { edgeFactory(source, target) };
         return true;
     }
 
@@ -165,16 +136,12 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
         return ContainsIndex(fromIndex) && ContainsIndex(toIndex) && matrix[fromIndex, toIndex] != 0;
     }
 
-    private bool ContainsIndex(int index) {
-        return index >= 0 && index < matrix.RowCount;
-    }
-
     public bool IsEdgesEmpty => matrix.Exists(f => f != 0);
     public int EdgeCount => int.CreateChecked(matrix.RowSums().Sum());
 
     public IEnumerable<TEdge> Edges => matrix.EnumerateIndexed(Zeros.Include)
         .Where(t => t.Item3 != 0)
-        .Select((t) => edgeFactory(indexToVertex(t.Item1), indexToVertex(t.Item2)));
+        .Select(t => edgeFactory(indexToVertex(t.Item1), indexToVertex(t.Item2)));
 
     public bool IsInEdgesEmpty(TVertex vertex) {
         var idx = vertexToIndex(vertex);
@@ -211,46 +178,8 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
 
     public int Degree(TVertex vertex) {
         var idx = vertexToIndex(vertex);
-        return int.CreateChecked(matrix.Row(idx).Sum()) 
-             + int.CreateChecked(matrix.Column(idx).Sum());
-    }
-
-    public BidirectionalMatrixGraph<TVertex, TEdge> ComputeTransitiveClosure() {
-        Matrix<float> oldM = DenseMatrix.OfMatrix(matrix);
-        using var acc = new MathAccelerator(MathMode.Fast);
-        Matrix<float>? m = null;
-        do {
-            if (m != null) {
-                (oldM, m) = (m, oldM);
-            }
-            acc.MultiplyMatrixRowMajorTiling(oldM, oldM, ref m);
-            m.ToBooleanInplace();
-        } while (!oldM.Equals(m));
-
-        return new BidirectionalMatrixGraph<TVertex, TEdge>(m, vertexToIndex, indexToVertex, edgeFactory);
-    }
-    
-    public bool SameNeighborhood(TVertex v1, TVertex v2) {
-        var idx1 = vertexToIndex(v1);
-        var idx2 = vertexToIndex(v2);
-        
-        var row1 = matrix.Row(idx1);
-        var row2 = matrix.Row(idx2);
-        if ((row1 - row2).Sum() != 0) {
-            return false;
-        }
-        
-        var col1 = matrix.Column(idx1);
-        var col2 = matrix.Column(idx2);
-        return (col1 - col2).Sum() == 0;
-    }
-
-    public bool AreMutualNeighbors(TVertex a, TVertex b) {
-        return ContainsEdge(a, b) && ContainsEdge(b, a);
-    }
-    
-    public bool IsAncestor(TVertex a, TVertex b) {
-        return ContainsEdge(a, b) && !ContainsEdge(b, a);
+        return int.CreateChecked(matrix.Row(idx).Sum())
+               + int.CreateChecked(matrix.Column(idx).Sum());
     }
 
     public void Clear() {
@@ -260,9 +189,7 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
     public int RemoveOutEdgeIf(TVertex vertex, EdgePredicate<TVertex, TEdge> predicate) {
         var edges = OutEdges(vertex).Where(e => predicate(e)).ToList();
         var cnt = edges.Count;
-        foreach (var edge in edges) {
-            RemoveEdge(edge);
-        }
+        foreach (var edge in edges) RemoveEdge(edge);
 
         return cnt;
     }
@@ -272,13 +199,11 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
         matrix.SetRow(idx, SparseVector.Create(matrix.RowCount, 0));
     }
 
-    public void TrimEdgeExcess() {}
+    public void TrimEdgeExcess() { }
 
     public bool AddVertex(TVertex vertex) {
-        if (!ContainsVertex(vertex)) {
-            throw new ArgumentOutOfRangeException(nameof(vertex));
-        }
-        
+        if (!ContainsVertex(vertex)) throw new ArgumentOutOfRangeException(nameof(vertex));
+
         return false;
     }
 
@@ -287,9 +212,7 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
     }
 
     public bool RemoveVertex(TVertex vertex) {
-        if (!ContainsVertex(vertex)) {
-            return false;
-        }
+        if (!ContainsVertex(vertex)) return false;
 
         var idx = vertexToIndex(vertex);
         matrix.SetRow(idx, SparseVector.Create(matrix.RowCount, 0));
@@ -300,25 +223,20 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
     public int RemoveVertexIf(VertexPredicate<TVertex> predicate) {
         var vertices = Vertices.Where(v => predicate(v)).ToList();
         var cnt = vertices.Count;
-        foreach (var vertex in vertices) {
-            RemoveVertex(vertex);
-        }
+        foreach (var vertex in vertices) RemoveVertex(vertex);
 
         return cnt;
     }
 
     public event VertexAction<TVertex>? VertexAdded;
     public event VertexAction<TVertex>? VertexRemoved;
+
     public bool AddEdge(TEdge edge) {
         var fromIndex = vertexToIndex(edge.Source);
         var toIndex = vertexToIndex(edge.Target);
-        if (!ContainsIndex(fromIndex) || !ContainsIndex(toIndex)) {
-            throw new ArgumentOutOfRangeException(nameof(edge));
-        }
+        if (!ContainsIndex(fromIndex) || !ContainsIndex(toIndex)) throw new ArgumentOutOfRangeException(nameof(edge));
 
-        if (matrix[fromIndex, toIndex] != 0) {
-            return false;
-        }
+        if (matrix[fromIndex, toIndex] != 0) return false;
         matrix[fromIndex, toIndex] = 1;
         EdgeAdded?.Invoke(edge);
         return true;
@@ -331,13 +249,9 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
     public bool RemoveEdge(TEdge edge) {
         var fromIndex = vertexToIndex(edge.Source);
         var toIndex = vertexToIndex(edge.Target);
-        if (!ContainsIndex(fromIndex) || !ContainsIndex(toIndex)) {
-            return false;
-        }
+        if (!ContainsIndex(fromIndex) || !ContainsIndex(toIndex)) return false;
 
-        if (matrix[fromIndex, toIndex] == 0) {
-            return false;
-        }
+        if (matrix[fromIndex, toIndex] == 0) return false;
         matrix[fromIndex, toIndex] = 0;
         EdgeRemoved?.Invoke(edge);
         return true;
@@ -346,15 +260,14 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
     public int RemoveEdgeIf(EdgePredicate<TVertex, TEdge> predicate) {
         var edges = Edges.Where(e => predicate(e)).ToList();
         var cnt = edges.Count;
-        foreach (var edge in edges) {
-            RemoveEdge(edge);
-        }
+        foreach (var edge in edges) RemoveEdge(edge);
 
         return cnt;
     }
 
     public event EdgeAction<TVertex, TEdge>? EdgeAdded;
     public event EdgeAction<TVertex, TEdge>? EdgeRemoved;
+
     public bool AddVerticesAndEdge(TEdge edge) {
         return AddEdge(edge);
     }
@@ -366,9 +279,7 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
     public int RemoveInEdgeIf(TVertex vertex, EdgePredicate<TVertex, TEdge> predicate) {
         var edges = InEdges(vertex).Where(e => predicate(e)).ToList();
         var cnt = edges.Count;
-        foreach (var edge in edges) {
-            RemoveEdge(edge);
-        }
+        foreach (var edge in edges) RemoveEdge(edge);
 
         return cnt;
     }
@@ -381,5 +292,72 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
     public void ClearEdges(TVertex vertex) {
         ClearInEdges(vertex);
         ClearOutEdges(vertex);
+    }
+
+    public static BidirectionalMatrixGraph<Vertex, Edge<Vertex>> ForVertices(int rows,
+        int columns,
+        bool columnMajor = true,
+        bool sparse = true) {
+        var indexToVertex = columnMajor switch {
+            true => i => Vertex.FromColumnMajorIndex(i, rows),
+            false => (Func<int, Vertex>)(i => Vertex.FromRowMajorIndex(i, columns))
+        };
+
+        var vertexToIndex = columnMajor switch {
+            true => v => v.ColumnMajorIndex(rows),
+            false => (Func<Vertex, int>)(v => v.RowMajorIndex(columns))
+        };
+
+        return new BidirectionalMatrixGraph<Vertex, Edge<Vertex>>(rows * columns, vertexToIndex, indexToVertex,
+            (s, t) => new Edge<Vertex>(s, t), sparse);
+    }
+
+    public static BidirectionalMatrixGraph<TVertex, TEdge> FromGraph(IBidirectionalGraph<TVertex, TEdge> g,
+        Func<TVertex, int> vertexToIndex,
+        Func<int, TVertex> indexToVertex,
+        Func<TVertex, TVertex, TEdge> edgeFactory,
+        bool sparse = true) {
+        var res = new BidirectionalMatrixGraph<TVertex, TEdge>(g.VertexCount, vertexToIndex, indexToVertex, edgeFactory,
+            sparse);
+        res.AddEdgeRange(g.Edges);
+        return res;
+    }
+
+    private bool ContainsIndex(int index) {
+        return index >= 0 && index < matrix.RowCount;
+    }
+
+    public BidirectionalMatrixGraph<TVertex, TEdge> ComputeTransitiveClosure() {
+        Matrix<float> oldM = DenseMatrix.OfMatrix(matrix);
+        using var acc = new MathAccelerator(MathMode.Fast);
+        Matrix<float>? m = null;
+        do {
+            if (m != null) (oldM, m) = (m, oldM);
+            acc.MultiplyMatrixRowMajorTiling(oldM, oldM, ref m);
+            m.ToBooleanInplace();
+        } while (!oldM.Equals(m));
+
+        return new BidirectionalMatrixGraph<TVertex, TEdge>(m, vertexToIndex, indexToVertex, edgeFactory);
+    }
+
+    public bool SameNeighborhood(TVertex v1, TVertex v2) {
+        var idx1 = vertexToIndex(v1);
+        var idx2 = vertexToIndex(v2);
+
+        var row1 = matrix.Row(idx1);
+        var row2 = matrix.Row(idx2);
+        if ((row1 - row2).Sum() != 0) return false;
+
+        var col1 = matrix.Column(idx1);
+        var col2 = matrix.Column(idx2);
+        return (col1 - col2).Sum() == 0;
+    }
+
+    public bool AreMutualNeighbors(TVertex a, TVertex b) {
+        return ContainsEdge(a, b) && ContainsEdge(b, a);
+    }
+
+    public bool IsAncestor(TVertex a, TVertex b) {
+        return ContainsEdge(a, b) && !ContainsEdge(b, a);
     }
 }

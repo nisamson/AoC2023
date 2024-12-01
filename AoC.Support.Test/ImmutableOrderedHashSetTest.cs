@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC.Support.Test - ImmutableOrderedHashSetTest.cs
 // Copyright (C) 2023 Nicholas
 // 
@@ -14,22 +15,19 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#endregion
 
-using AoC.Support;
+#endregion
 
 namespace AoC.Support.Test;
 
 [TestFixture]
 [TestOf(typeof(ImmutableOrderedHashSet<>))]
 public class ImmutableOrderedHashSetTest {
-
     [Test]
     [Timeout(10000)]
     public void TestCreation(
         [Random(2, 100, 20)] int count
-        ) {
-
+    ) {
         var values = Enumerable.Range(0, count).Select(_ => TestContext.CurrentContext.Random.Next()).ToHashSet();
         var set = ImmutableOrderedHashSet<int>.Empty.Union(values);
         Assert.That(set, Has.Count.EqualTo(count));
@@ -41,7 +39,6 @@ public class ImmutableOrderedHashSetTest {
     public void TestInsertionOrder(
         [Random(2, 100, 20)] int count
     ) {
-
         var values = Enumerable.Range(0, count).ToList();
         var set = ImmutableOrderedHashSet<int>.Empty.Union(values);
         Assert.That(set, Is.EqualTo(values));

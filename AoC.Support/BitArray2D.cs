@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC.Support - BitArray2D.cs
 // Copyright (C) 2023 Nicholas
 // 
@@ -14,9 +15,8 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#endregion
 
-using System.Collections;
+#endregion
 
 namespace AoC.Support;
 

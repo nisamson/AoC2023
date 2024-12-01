@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC2023 - Day13.cs
 // Copyright (C) 2023 Nicholas
 // 
@@ -14,29 +15,14 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #endregion
 
 using AoC.Support;
 
 namespace AoC2023._2023;
 
-public class Day13: Adventer {
-    public class Problem {
-        private List<Grid<char>> grids = [];
-        
-        public Problem(string input) {
-            foreach (var grp in input.Split("\n\n", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)) {
-                var lines = grp.Split("\n", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-                var grid = new Grid<char>(lines[0].Length, lines.Length, lines.SelectMany(l => l.AsEnumerable()));
-                grids.Add(grid);
-            }
-        }
-
-        public int HorizontalReflections(Grid<char> grid) {
-            throw new NotImplementedException();
-        }
-    }
-    
+public class Day13 : Adventer {
     protected override void InternalOnLoad() {
         base.InternalOnLoad();
     }
@@ -47,5 +33,22 @@ public class Day13: Adventer {
 
     protected override object InternalPart2() {
         throw new NotImplementedException();
+    }
+
+    public class Problem {
+        private readonly List<Grid<char>> grids = [];
+
+        public Problem(string input) {
+            foreach (var grp in input.Split("\n\n",
+                         StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)) {
+                var lines = grp.Split("\n", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                var grid = new Grid<char>(lines[0].Length, lines.Length, lines.SelectMany(l => l.AsEnumerable()));
+                grids.Add(grid);
+            }
+        }
+
+        public int HorizontalReflections(Grid<char> grid) {
+            throw new NotImplementedException();
+        }
     }
 }

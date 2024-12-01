@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC2023 - IAdvent.cs
 // Copyright (C) 2023 Nicholas
 // 
@@ -14,6 +15,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #endregion
 
 namespace AoC2023;

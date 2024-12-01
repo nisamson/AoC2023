@@ -25,6 +25,41 @@ using Farkle.Builder;
 namespace AoC2023._2023;
 
 public class Day08 : Adventer {
+    private Day08Problem problem;
+
+    public Day08() {
+        Bag["test"] = """
+                      LR
+
+                      HHA = (HHB, XXX)
+                      HHB = (XXX, HHZ)
+                      HHZ = (HHB, XXX)
+                      JJA = (JJB, XXX)
+                      JJB = (JJC, JJC)
+                      JJC = (JJZ, JJZ)
+                      JJZ = (JJB, JJB)
+                      XXX = (XXX, XXX)
+                      """;
+    }
+
+    protected override void InternalOnLoad() {
+        // var res = Day08Lang.Runtime.Parse(Input.Text);
+        // if (res.IsOk) {
+        //     problem = res.ResultValue;
+        // } else {
+        //     throw new Exception(res.ErrorValue.ToString());
+        // }
+        problem = Day08Problem.Parse(Input.Lines);
+    }
+
+    protected override object InternalPart1() {
+        return problem.NavigatePart1();
+    }
+
+    protected override object InternalPart2() {
+        return problem.NavigatePart2();
+    }
+
     internal enum Direction {
         Left,
         Right
@@ -35,7 +70,7 @@ public class Day08 : Adventer {
             return input switch {
                 "L" => Direction.Left,
                 "R" => Direction.Right,
-                _   => throw new ArgumentOutOfRangeException(nameof(input), input, "Invalid direction")
+                _ => throw new ArgumentOutOfRangeException(nameof(input), input, "Invalid direction")
             };
         }
 
@@ -47,7 +82,7 @@ public class Day08 : Adventer {
             return input switch {
                 'L' => Direction.Left,
                 'R' => Direction.Right,
-                _   => throw new ArgumentOutOfRangeException(nameof(input), input, "Invalid direction")
+                _ => throw new ArgumentOutOfRangeException(nameof(input), input, "Invalid direction")
             };
         }
     }
@@ -65,7 +100,8 @@ public class Day08 : Adventer {
         public static Node Parse(string s) {
             var parts = s.Split("=", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             var name = parts[0];
-            var lr = parts[1].Trim('(', ')').Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            var lr = parts[1].Trim('(', ')')
+                .Split(",", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
             return new Node(name, lr[0], lr[1]);
         }
     }
@@ -88,9 +124,9 @@ public class Day08 : Adventer {
                 var node = Nodes[curr];
                 var dir = Directions[stepsTaken % Directions.Count];
                 curr = dir switch {
-                    Direction.Left  => node.Left,
+                    Direction.Left => node.Left,
                     Direction.Right => node.Right,
-                    _               => throw new ArgumentOutOfRangeException(nameof(dir), dir, "Invalid direction")
+                    _ => throw new ArgumentOutOfRangeException(nameof(dir), dir, "Invalid direction")
                 };
                 stepsTaken++;
             }
@@ -102,9 +138,9 @@ public class Day08 : Adventer {
             var node = Nodes[curr];
             var dir = Directions[step % Directions.Count];
             return dir switch {
-                Direction.Left  => node.Left,
+                Direction.Left => node.Left,
                 Direction.Right => node.Right,
-                _               => throw new ArgumentOutOfRangeException(nameof(dir), dir, "Invalid direction"),
+                _ => throw new ArgumentOutOfRangeException(nameof(dir), dir, "Invalid direction")
             };
         }
 
@@ -115,9 +151,9 @@ public class Day08 : Adventer {
                 var node = Nodes[curr];
                 var dir = Directions[stepsTaken % Directions.Count];
                 curr = dir switch {
-                    Direction.Left  => node.Left,
+                    Direction.Left => node.Left,
                     Direction.Right => node.Right,
-                    _               => throw new ArgumentOutOfRangeException(nameof(dir), dir, "Invalid direction"),
+                    _ => throw new ArgumentOutOfRangeException(nameof(dir), dir, "Invalid direction")
                 };
                 stepsTaken++;
             }
@@ -130,35 +166,22 @@ public class Day08 : Adventer {
                 .Where(s => s.EndsWith('A'))
                 .AsParallel()
                 .Select(NavigatePart2Single)
-                .Select(i => (long) i)
+                .Select(i => (long)i)
                 .Aggregate(MathUtils.Lcm);
         }
     }
 
-    class Day08Lang {
+    private class Day08Lang {
         public static readonly PrecompilableDesigntimeFarkle<Day08Problem> Designtime;
         public static readonly RuntimeFarkle<Day08Problem> Runtime;
 
-        public static IReadOnlyList<Direction> ParseDirections(ReadOnlySpan<char> span) {
-            var list = new List<Direction>();
-            foreach (var c in span) {
-                list.Add(
-                    c switch {
-                        'L' => Direction.Left,
-                        'R' => Direction.Right,
-                        _   => throw new ArgumentOutOfRangeException(nameof(span), c, "Invalid direction")
-                    }
-                );
-            }
-
-            return list;
-        }
-
         static Day08Lang() {
-            var directionTerm = Terminal.Create("directionsToken", (_, data) => ParseDirections(data), Regex.FromRegexString("[LR]+"))
+            var directionTerm = Terminal.Create("directionsToken", (_, data) => ParseDirections(data),
+                    Regex.FromRegexString("[LR]+"))
                 .Extended().AsIs();
 
-            var nodeName = Terminal.Create("nodeName", (_, data) => new string(data), Regex.FromRegexString("[A-Z]{3}"));
+            var nodeName = Terminal.Create("nodeName", (_, data) => new string(data),
+                Regex.FromRegexString("[A-Z]{3}"));
             var directions = Nonterminal.Create(
                 "directions",
                 directionTerm,
@@ -186,44 +209,23 @@ public class Day08 : Adventer {
                 )
             );
             Designtime = problem
-                .CaseSensitive(true)
+                .CaseSensitive()
                 .MarkForPrecompile();
             Runtime = Designtime.Build();
         }
-    }
 
-    public Day08() {
-        Bag["test"] = """
-                      LR
+        public static IReadOnlyList<Direction> ParseDirections(ReadOnlySpan<char> span) {
+            var list = new List<Direction>();
+            foreach (var c in span)
+                list.Add(
+                    c switch {
+                        'L' => Direction.Left,
+                        'R' => Direction.Right,
+                        _ => throw new ArgumentOutOfRangeException(nameof(span), c, "Invalid direction")
+                    }
+                );
 
-                      HHA = (HHB, XXX)
-                      HHB = (XXX, HHZ)
-                      HHZ = (HHB, XXX)
-                      JJA = (JJB, XXX)
-                      JJB = (JJC, JJC)
-                      JJC = (JJZ, JJZ)
-                      JJZ = (JJB, JJB)
-                      XXX = (XXX, XXX)
-                      """;
-    }
-
-    private Day08Problem problem;
-
-    protected override void InternalOnLoad() {
-        // var res = Day08Lang.Runtime.Parse(Input.Text);
-        // if (res.IsOk) {
-        //     problem = res.ResultValue;
-        // } else {
-        //     throw new Exception(res.ErrorValue.ToString());
-        // }
-        problem = Day08Problem.Parse(Input.Lines);
-    }
-
-    protected override object InternalPart1() {
-        return problem.NavigatePart1();
-    }
-
-    protected override object InternalPart2() {
-        return problem.NavigatePart2();
+            return list;
+        }
     }
 }

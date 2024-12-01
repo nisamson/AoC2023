@@ -21,7 +21,6 @@
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using CommunityToolkit.HighPerformance;
@@ -29,31 +28,35 @@ using CommunityToolkit.HighPerformance;
 namespace AoC.Support.Numerics;
 
 public static class VectorExtensions {
+    private const int LoopUnroll = 8;
+
     private static readonly byte[] Avx2LookupArray = [
-        0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
+        0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4
     ];
 
     private static readonly byte[] Lookup8Bit =
-        Enumerable.Range(0, ((int) byte.MaxValue) + 1)
+        Enumerable.Range(0, byte.MaxValue + 1)
             .Select(byte.CreateTruncating)
             .Select(byte.PopCount)
             .ToArray();
 
     private static readonly Vector256<byte> Avx2Lookup = Vector256.Create(Avx2LookupArray);
-    private static readonly Vector256<byte> Avx2LowMask = Vector256.Create((byte) 0xf);
+    private static readonly Vector256<byte> Avx2LowMask = Vector256.Create((byte)0xf);
     private static readonly int Vector256UlongCount = Vector256<ulong>.Count;
     private static readonly int Vector256ByteCount = Vector256<byte>.Count;
 
     private static readonly Vector128<byte> Ssse3Lookup = Vector128.Create(Avx2LookupArray);
-    private static readonly Vector128<byte> Ssse3LowMask = Vector128.Create((byte) 0xf);
+    private static readonly Vector128<byte> Ssse3LowMask = Vector128.Create((byte)0xf);
     private static readonly int Vector128UlongCount = Vector128<ulong>.Count;
     private static readonly int Vector128ByteCount = Vector128<byte>.Count;
 
-    public static ulong PopCount<TNumeric>(this Span<TNumeric> span) where TNumeric : unmanaged, IBinaryInteger<TNumeric> {
-        return PopCount((ReadOnlySpan<TNumeric>) span);
+    public static ulong PopCount<TNumeric>(this Span<TNumeric> span)
+        where TNumeric : unmanaged, IBinaryInteger<TNumeric> {
+        return PopCount((ReadOnlySpan<TNumeric>)span);
     }
 
-    public static ulong PopCount<TNumeric>(this ReadOnlySpan<TNumeric> span) where TNumeric : unmanaged, IBinaryInteger<TNumeric> {
+    public static ulong PopCount<TNumeric>(this ReadOnlySpan<TNumeric> span)
+        where TNumeric : unmanaged, IBinaryInteger<TNumeric> {
         if (Avx2.IsSupported) {
             Debug.WriteLine("Using AVX2");
             if (span.AsBytes().Length > 512) {
@@ -73,11 +76,10 @@ public static class VectorExtensions {
         return span.BoringPopCount();
     }
 
-    public static ulong BoringPopCount<TNumeric>(this ReadOnlySpan<TNumeric> span) where TNumeric : unmanaged, IBinaryInteger<TNumeric> {
+    public static ulong BoringPopCount<TNumeric>(this ReadOnlySpan<TNumeric> span)
+        where TNumeric : unmanaged, IBinaryInteger<TNumeric> {
         var count = 0ul;
-        foreach (var value in span) {
-            count += ulong.CreateSaturating(TNumeric.PopCount(value));
-        }
+        foreach (var value in span) count += ulong.CreateSaturating(TNumeric.PopCount(value));
 
         return count;
     }
@@ -101,18 +103,12 @@ public static class VectorExtensions {
             span = span[Vector256ByteCount..];
         }
 
-        for (var i = 0; i < Vector256UlongCount; i++) {
-            count += accumulator.GetElement(i);
-        }
+        for (var i = 0; i < Vector256UlongCount; i++) count += accumulator.GetElement(i);
 
-        foreach (var b in span) {
-            count += Lookup8Bit[b];
-        }
+        foreach (var b in span) count += Lookup8Bit[b];
 
         return count;
     }
-
-    private const int LoopUnroll = 8;
 
     public static ulong PopCountAvx2Alternate(this ReadOnlySpan<byte> span) {
         var count = 0ul;
@@ -149,13 +145,9 @@ public static class VectorExtensions {
             accumulator = Avx2.Add(accumulator, Avx2.SumAbsoluteDifferences(local, Vector256<byte>.Zero).AsUInt64());
         }
 
-        for (var i = 0; i < Vector256UlongCount; i++) {
-            count += accumulator.GetElement(i);
-        }
+        for (var i = 0; i < Vector256UlongCount; i++) count += accumulator.GetElement(i);
 
-        foreach (var b in span) {
-            count += Lookup8Bit[b];
-        }
+        foreach (var b in span) count += Lookup8Bit[b];
 
         return count;
     }
@@ -192,20 +184,16 @@ public static class VectorExtensions {
             accumulator = Avx2.Add(accumulator, Avx2.SumAbsoluteDifferences(local, Vector256<byte>.Zero).AsUInt64());
         }
 
-        for (var i = 0; i < Vector256UlongCount; i++) {
-            count += accumulator.GetElement(i);
-        }
+        for (var i = 0; i < Vector256UlongCount; i++) count += accumulator.GetElement(i);
 
-        foreach (var b in span) {
-            count += Lookup8Bit[b];
-        }
+        foreach (var b in span) count += Lookup8Bit[b];
 
         return count;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void Avx2Iter(ref ReadOnlySpan<byte> span, ref Vector256<byte> local) {
-        var vec = Vector256.Create<byte>(span);
+        var vec = Vector256.Create(span);
         var low = Avx2.And(vec, Avx2LowMask);
         var hi = Avx2.And(Avx2.ShiftRightLogical(vec.AsInt16(), 4).AsByte(), Avx2LowMask);
         var popcnt1 = Avx2.Shuffle(Avx2Lookup, low);
@@ -216,7 +204,7 @@ public static class VectorExtensions {
     }
 
     private static void Avx2IterNoInline(ref ReadOnlySpan<byte> span, ref Vector256<byte> local) {
-        var vec = Vector256.Create<byte>(span);
+        var vec = Vector256.Create(span);
         var low = Avx2.And(vec, Avx2LowMask);
         var hi = Avx2.And(Avx2.ShiftRightLogical(vec.AsInt16(), 4).AsByte(), Avx2LowMask);
         var popcnt1 = Avx2.Shuffle(Avx2Lookup, low);
@@ -243,13 +231,9 @@ public static class VectorExtensions {
             span = span[Vector128ByteCount..];
         }
 
-        for (var i = 0; i < Vector128UlongCount; i++) {
-            count += acc.GetElement(i);
-        }
+        for (var i = 0; i < Vector128UlongCount; i++) count += acc.GetElement(i);
 
-        foreach (var b in span) {
-            count += Lookup8Bit[b];
-        }
+        foreach (var b in span) count += Lookup8Bit[b];
 
         return count;
     }

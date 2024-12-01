@@ -20,36 +20,83 @@
 
 using System.Collections;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using AoC.Support.Numerics;
 using CommunityToolkit.HighPerformance;
 
 namespace AoC.Support.Collections;
 
 public sealed class BitArray : ICollection, IEnumerable<bool>, IStructuralEquatable, ICloneable {
-    private readonly ulong[] data;
-    
+    public delegate T Accumulator<T>(T acc, Vector<ulong> vec);
+
+    public delegate T AccumulatorScalar<T>(T acc, ulong vec);
+
+    public delegate T BiAccumulator<T>(T acc, Vector<ulong> a, Vector<ulong> b);
+
+    public delegate T BiAccumulatorScalar<T>(T acc, ulong a, ulong b);
+
     private const int BitsPerLong = 64;
     private const int IndexMask = BitsPerLong - 1;
     private const int ShiftMask = 6;
-    private static int VectorSize => Vector<ulong>.Count;
+    private readonly ulong[] data;
 
     public BitArray(int initialSize = 0, bool defaultValue = false) {
         data = new ulong[(initialSize + BitsPerLong - 1) / BitsPerLong];
-        if (defaultValue) {
-            Array.Fill(data, ulong.MaxValue);
-        }
-        
+        if (defaultValue) Array.Fill(data, ulong.MaxValue);
+
         Count = initialSize;
         FixUpLastElement();
     }
+
+    private static int VectorSize => Vector<ulong>.Count;
+
+    public bool this[int index] {
+        get {
+            var (longIndex, bitIndex) = GetIndices((uint)index);
+            return (data[longIndex] & (1UL << bitIndex)) != 0;
+        }
+        set {
+            var (longIndex, bitIndex) = GetIndices((uint)index);
+            if (value)
+                data[longIndex] |= 1UL << bitIndex;
+            else
+                data[longIndex] &= ~(1UL << bitIndex);
+        }
+    }
+
+    object ICloneable.Clone() {
+        return Clone();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() {
+        return GetEnumerator();
+    }
+
+    public void CopyTo(Array array, int index) {
+        if (array is not bool[] boolArray)
+            throw new ArgumentException("The array must be of type bool[]", nameof(array));
+
+        CopyTo(boolArray, index);
+    }
+
+    /// <summary>
+    ///     Returns the number of bits in the BitArray. If the BitArray is larger than <see cref="int.MaxValue" />, returns
+    ///     <see cref="int.MaxValue" />.
+    /// </summary>
+    public int Count { get; }
+
+    public bool IsSynchronized => false;
+    public object SyncRoot => this;
 
     IEnumerator<bool> IEnumerable<bool>.GetEnumerator() {
         return GetEnumerator();
     }
 
-    IEnumerator IEnumerable.GetEnumerator() {
-        return GetEnumerator();
+    bool IStructuralEquatable.Equals(object? other, IEqualityComparer comparer) {
+        return Equals(other, comparer);
+    }
+
+    public int GetHashCode(IEqualityComparer comparer) {
+        return this.Aggregate(0, (i, b) => HashCode.Combine(i, comparer.GetHashCode(b)));
     }
 
     public Enumerator GetEnumerator() {
@@ -67,9 +114,7 @@ public sealed class BitArray : ICollection, IEnumerable<bool>, IStructuralEquata
     public void CopyTo(bool[] array, int index) {
         for (var i = 0; i < data.Length; i++) {
             var longValue = data[i];
-            for (var j = 0; j < BitsPerLong; j++) {
-                array[index++] = (longValue & (1UL << j)) != 0;
-            }
+            for (var j = 0; j < BitsPerLong; j++) array[index++] = (longValue & (1UL << j)) != 0;
         }
     }
 
@@ -77,32 +122,9 @@ public sealed class BitArray : ICollection, IEnumerable<bool>, IStructuralEquata
         Array.Copy(data, array.data, data.Length);
     }
 
-    public void CopyTo(Array array, int index) {
-        if (array is not bool[] boolArray) {
-            throw new ArgumentException("The array must be of type bool[]", nameof(array));
-        }
-
-        CopyTo(boolArray, index);
-    }
-
-    /// <summary>
-    /// Returns the number of bits in the BitArray. If the BitArray is larger than <see cref="int.MaxValue"/>, returns <see cref="int.MaxValue"/>.
-    /// </summary>
-    public int Count { get; private set; }
-
-    public bool IsSynchronized => false;
-    public object SyncRoot => this;
-
     public int IndexOf(bool item) {
-        return this.Select((b, i) => (b, i)).Where((tuple => tuple.b == item)).Select(t => t.i).FirstOrDefault(-1);
+        return this.Select((b, i) => (b, i)).Where(tuple => tuple.b == item).Select(t => t.i).FirstOrDefault(-1);
     }
-
-    private delegate Vector<ulong> Mutator(Vector<ulong> a, Vector<ulong> b);
-
-    private delegate ulong MutatorScalar(ulong a, ulong b);
-    
-    private delegate Vector<ulong> Transformer(Vector<ulong> a);
-    private delegate ulong TransformerScalar(ulong a);
 
     private void MutateWithOther(BitArray other, Mutator mutator, MutatorScalar scalar) {
         ArgumentOutOfRangeException.ThrowIfNotEqual(other.Count, Count);
@@ -127,20 +149,20 @@ public sealed class BitArray : ICollection, IEnumerable<bool>, IStructuralEquata
 
     private void TransformInPlace(Transformer transformer, TransformerScalar scalar) {
         var span = new Span<ulong>(data);
-        
+
         while (span.Length >= VectorSize) {
             var thisVec = new Vector<ulong>(span);
             thisVec = transformer(thisVec);
             thisVec.CopyTo(span);
             span = span[VectorSize..];
         }
-        
+
         while (span.Length > 0) {
             span[0] = scalar(span[0]);
             span = span[1..];
         }
     }
-    
+
     public BitArray Not() {
         TransformInPlace(a => ~a, a => ~a);
         FixUpLastElement();
@@ -149,52 +171,11 @@ public sealed class BitArray : ICollection, IEnumerable<bool>, IStructuralEquata
 
     // Some operations modify bits in the last element beyond the Count. This method fixes those bits.
     private void FixUpLastElement() {
-        if (data.Length > 0) {
-            data[^1] &= ulong.MaxValue >> (BitsPerLong - (Count & IndexMask));
-        }
+        if (data.Length > 0) data[^1] &= ulong.MaxValue >> (BitsPerLong - (Count & IndexMask));
     }
 
     private static (int, int) GetIndices(uint index) {
-        return ((int, int)) (index >> ShiftMask, index & IndexMask);
-    }
-
-    public bool this[int index] {
-        get {
-            var (longIndex, bitIndex) = GetIndices((uint) index);
-            return (data[longIndex] & (1UL << bitIndex)) != 0;
-        }
-        set {
-            var (longIndex, bitIndex) = GetIndices((uint) index);
-            if (value) {
-                data[longIndex] |= 1UL << bitIndex;
-            } else {
-                data[longIndex] &= ~(1UL << bitIndex);
-            }
-        }
-    }
-
-    public sealed class Enumerator : IEnumerator<bool> {
-        private readonly BitArray bitArray;
-        private int index = -1;
-
-        public Enumerator(BitArray bitArray) {
-            this.bitArray = bitArray;
-        }
-
-        public bool MoveNext() {
-            index++;
-            return index < bitArray.Count;
-        }
-
-        public void Reset() {
-            index = -1;
-        }
-
-        public bool Current => bitArray[index];
-
-        object IEnumerator.Current => Current;
-
-        public void Dispose() { }
+        return ((int, int))(index >> ShiftMask, index & IndexMask);
     }
 
     public BitArray And(BitArray other) {
@@ -211,10 +192,10 @@ public sealed class BitArray : ICollection, IEnumerable<bool>, IStructuralEquata
             other,
             (a, b) => a | b,
             (a, b) => a | b
-            );
+        );
         return this;
     }
-    
+
     public BitArray Xor(BitArray other) {
         MutateWithOther(
             other,
@@ -225,23 +206,13 @@ public sealed class BitArray : ICollection, IEnumerable<bool>, IStructuralEquata
     }
 
     public bool IntersectionIsEmpty(BitArray other) {
-        for (var i = 0; i < data.Length; i++) {
-            if ((data[i] & other.data[i]) != 0) {
+        for (var i = 0; i < data.Length; i++)
+            if ((data[i] & other.data[i]) != 0)
                 return false;
-            }
-        }
-        
+
         return true;
     }
-    
-    public delegate T Accumulator<T>(T acc, Vector<ulong> vec);
 
-    public delegate T BiAccumulator<T>(T acc, Vector<ulong> a, Vector<ulong> b);
-
-    public delegate T AccumulatorScalar<T>(T acc, ulong vec);
-
-    public delegate T BiAccumulatorScalar<T>(T acc, ulong a, ulong b);
-    
     public T Accumulate<T>(T seed, Accumulator<T> accumulator, AccumulatorScalar<T> scalar) {
         var span = new Span<ulong>(data);
         var acc = seed;
@@ -259,19 +230,38 @@ public sealed class BitArray : ICollection, IEnumerable<bool>, IStructuralEquata
         return acc;
     }
 
-    private static bool AddBool(bool a, bool b) => a | b;
-    private static bool MulBool(bool a, bool b) => a | b;
-    
-    private static Vector<ulong> AddVector(Vector<ulong> a, Vector<ulong> b) => a | b;
-    private static Vector<ulong> MulVector(Vector<ulong> a, Vector<ulong> b) => a & b;
-    private static bool SumVector(Vector<ulong> a) => a != Vector<ulong>.Zero;
-    
-    private static ulong AddScalar(ulong a, ulong b) => a | b;
-    private static ulong MulScalar(ulong a, ulong b) => a & b;
+    private static bool AddBool(bool a, bool b) {
+        return a | b;
+    }
+
+    private static bool MulBool(bool a, bool b) {
+        return a | b;
+    }
+
+    private static Vector<ulong> AddVector(Vector<ulong> a, Vector<ulong> b) {
+        return a | b;
+    }
+
+    private static Vector<ulong> MulVector(Vector<ulong> a, Vector<ulong> b) {
+        return a & b;
+    }
+
+    private static bool SumVector(Vector<ulong> a) {
+        return a != Vector<ulong>.Zero;
+    }
+
+    private static ulong AddScalar(ulong a, ulong b) {
+        return a | b;
+    }
+
+    private static ulong MulScalar(ulong a, ulong b) {
+        return a & b;
+    }
 
     public bool DotProduct(BitArray other) {
         ArgumentOutOfRangeException.ThrowIfNotEqual(other.Count, Count);
-        return BiAccumulate(other, false, (b, av, bv) => b || SumVector(MulVector(av, bv)), (b, a, c) => (b.ToByte() | (a & c)) != 0);
+        return BiAccumulate(other, false, (b, av, bv) => b || SumVector(MulVector(av, bv)),
+            (b, a, c) => (b.ToByte() | (a & c)) != 0);
     }
 
     public T BiAccumulate<T>(BitArray other, T seed, BiAccumulator<T> biAccumulator, BiAccumulatorScalar<T> scalar) {
@@ -296,14 +286,13 @@ public sealed class BitArray : ICollection, IEnumerable<bool>, IStructuralEquata
 
         return acc;
     }
-    
+
     public void SetAll(bool value) {
-        if (value) {
+        if (value)
             Array.Fill(data, ulong.MaxValue);
-        } else {
+        else
             Array.Fill(data, 0UL);
-        }
-        
+
         FixUpLastElement();
     }
 
@@ -311,41 +300,26 @@ public sealed class BitArray : ICollection, IEnumerable<bool>, IStructuralEquata
         return this.Select((b, i) => (b, i)).Where(tuple => tuple.b).Select(tuple => tuple.i);
     }
 
-    bool IStructuralEquatable.Equals(object? other, IEqualityComparer comparer) {
-        return Equals(other, comparer);
-    }
-
     public override bool Equals(object? other) {
         return Equals(other, EqualityComparer<bool>.Default);
     }
 
     public bool Equals(object? other, IEqualityComparer comparer) {
-        if (ReferenceEquals(this, other)) {
-            return true;
-        }
-        
-        if (other is not BitArray bitArray) {
-            return false;
-        }
-        
-        if (comparer is not IEqualityComparer<bool> boolComparer) {
+        if (ReferenceEquals(this, other)) return true;
+
+        if (other is not BitArray bitArray) return false;
+
+        if (comparer is not IEqualityComparer<bool> boolComparer)
             throw new ArgumentException("The comparer must be of type IEqualityComparer<bool>", nameof(comparer));
-        }
 
         return this.SequenceEqual(bitArray, boolComparer);
     }
 
 
     public bool Equals(BitArray other) {
-        if (Count != other.Count) {
-            return false;
-        }
+        if (Count != other.Count) return false;
 
         return data.SequenceEqual(other.data);
-    }
-
-    public int GetHashCode(IEqualityComparer comparer) {
-        return this.Aggregate(0, (i, b) => HashCode.Combine(i, comparer.GetHashCode(b)));
     }
 
     public override int GetHashCode() {
@@ -354,11 +328,7 @@ public sealed class BitArray : ICollection, IEnumerable<bool>, IStructuralEquata
 
     public int CountSetBits() {
         var count = data.AsReadOnlySpan().PopCount();
-        return (int) count;
-    }
-
-    object ICloneable.Clone() {
-        return Clone();
+        return (int)count;
     }
 
     public BitArray Clone() {
@@ -377,5 +347,37 @@ public sealed class BitArray : ICollection, IEnumerable<bool>, IStructuralEquata
             (a, b) => a & ~b,
             (a, b) => a & ~b
         );
+    }
+
+    private delegate Vector<ulong> Mutator(Vector<ulong> a, Vector<ulong> b);
+
+    private delegate ulong MutatorScalar(ulong a, ulong b);
+
+    private delegate Vector<ulong> Transformer(Vector<ulong> a);
+
+    private delegate ulong TransformerScalar(ulong a);
+
+    public sealed class Enumerator : IEnumerator<bool> {
+        private readonly BitArray bitArray;
+        private int index = -1;
+
+        public Enumerator(BitArray bitArray) {
+            this.bitArray = bitArray;
+        }
+
+        public bool MoveNext() {
+            index++;
+            return index < bitArray.Count;
+        }
+
+        public void Reset() {
+            index = -1;
+        }
+
+        public bool Current => bitArray[index];
+
+        object IEnumerator.Current => Current;
+
+        public void Dispose() { }
     }
 }

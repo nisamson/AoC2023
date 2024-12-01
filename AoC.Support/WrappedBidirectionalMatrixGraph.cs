@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC.Support - WrappedBidirectionalMatrixGraph.cs
 // Copyright (C) 2023 Nicholas
 // 
@@ -14,6 +15,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #endregion
 
 using System.Diagnostics.CodeAnalysis;
@@ -22,43 +24,39 @@ using QuikGraph;
 namespace AoC.Support;
 
 using Vertex = Vertex<int>;
+using BiGraph = BidirectionalMatrixGraph<Edge<int>>;
 
-using BiGraph = QuikGraph.BidirectionalMatrixGraph<Edge<int>>;
-
-public class WrappedBidirectionalMatrixGraph<TVertex> : IBidirectionalGraph<TVertex, Edge<TVertex>>, IMutableEdgeListGraph<TVertex, Edge<TVertex>> where TVertex: notnull {
+public class WrappedBidirectionalMatrixGraph<TVertex> : IBidirectionalGraph<TVertex, Edge<TVertex>>,
+    IMutableEdgeListGraph<TVertex, Edge<TVertex>> where TVertex : notnull {
     private readonly BiGraph graph;
-    private readonly Func<TVertex, int> vertexToIndex;
     private readonly Func<int, TVertex> indexToVertex;
-    
-    public WrappedBidirectionalMatrixGraph(int vertexCount, Func<TVertex, int> vertexToIndex, Func<int, TVertex> indexToVertex) {
+    private readonly Func<TVertex, int> vertexToIndex;
+
+    public WrappedBidirectionalMatrixGraph(int vertexCount, Func<TVertex, int> vertexToIndex,
+        Func<int, TVertex> indexToVertex) {
         graph = new BiGraph(vertexCount);
         this.vertexToIndex = vertexToIndex;
         this.indexToVertex = indexToVertex;
-        graph.EdgeAdded += edge => EdgeAdded?.Invoke(new Edge<TVertex>(this.indexToVertex(edge.Source), this.indexToVertex(edge.Target)));
-        graph.EdgeRemoved += edge => EdgeRemoved?.Invoke(new Edge<TVertex>(this.indexToVertex(edge.Source), this.indexToVertex(edge.Target)));
-    }
-
-    public static WrappedBidirectionalMatrixGraph<Vertex> ForVertices(int rows, int columns, bool columnMajor = true) {
-        var indexToVertex = columnMajor switch {
-            true => (Func<int, Vertex>) (i => Vertex.FromColumnMajorIndex(i, rows)),
-            false => (Func<int, Vertex>) (i => Vertex.FromRowMajorIndex(i, columns)),
-        };
-        
-        var vertexToIndex = columnMajor switch {
-            true => (Func<Vertex, int>) (v => v.ColumnMajorIndex(rows)),
-            false => (Func<Vertex, int>) (v => v.RowMajorIndex(columns)),
-        };
-        
-        return new WrappedBidirectionalMatrixGraph<Vertex>(rows * columns, vertexToIndex, indexToVertex);
+        graph.EdgeAdded += edge =>
+            EdgeAdded?.Invoke(new Edge<TVertex>(this.indexToVertex(edge.Source), this.indexToVertex(edge.Target)));
+        graph.EdgeRemoved += edge =>
+            EdgeRemoved?.Invoke(new Edge<TVertex>(this.indexToVertex(edge.Source), this.indexToVertex(edge.Target)));
     }
 
     public bool IsDirected => graph.IsDirected;
     public bool AllowParallelEdges => graph.AllowParallelEdges;
-    public bool ContainsVertex(TVertex vertex) => graph.ContainsVertex(vertexToIndex(vertex));
 
-    public bool IsOutEdgesEmpty(TVertex vertex) => graph.IsOutEdgesEmpty(vertexToIndex(vertex));
+    public bool ContainsVertex(TVertex vertex) {
+        return graph.ContainsVertex(vertexToIndex(vertex));
+    }
 
-    public int OutDegree(TVertex vertex) => graph.OutDegree(vertexToIndex(vertex));
+    public bool IsOutEdgesEmpty(TVertex vertex) {
+        return graph.IsOutEdgesEmpty(vertexToIndex(vertex));
+    }
+
+    public int OutDegree(TVertex vertex) {
+        return graph.OutDegree(vertexToIndex(vertex));
+    }
 
     public IEnumerable<Edge<TVertex>> OutEdges(TVertex vertex) {
         var index = vertexToIndex(vertex);
@@ -108,18 +106,29 @@ public class WrappedBidirectionalMatrixGraph<TVertex> : IBidirectionalGraph<TVer
     public bool IsVerticesEmpty => graph.IsVerticesEmpty;
     public int VertexCount => graph.VertexCount;
     public IEnumerable<TVertex> Vertices => graph.Vertices.Select(indexToVertex);
+
     public bool ContainsEdge(Edge<TVertex> edge) {
         return graph.ContainsEdge(new Edge<int>(vertexToIndex(edge.Source), vertexToIndex(edge.Target)));
     }
 
     public bool IsEdgesEmpty => graph.IsEdgesEmpty;
     public int EdgeCount => graph.EdgeCount;
-    public IEnumerable<Edge<TVertex>> Edges => graph.Edges.Select(e => new Edge<TVertex>(indexToVertex(e.Source), indexToVertex(e.Target)));
-    public bool IsInEdgesEmpty(TVertex vertex) => graph.IsInEdgesEmpty(vertexToIndex(vertex));
 
-    public int InDegree(TVertex vertex) => graph.InDegree(vertexToIndex(vertex));
+    public IEnumerable<Edge<TVertex>> Edges =>
+        graph.Edges.Select(e => new Edge<TVertex>(indexToVertex(e.Source), indexToVertex(e.Target)));
 
-    public IEnumerable<Edge<TVertex>> InEdges(TVertex vertex) => graph.InEdges(vertexToIndex(vertex)).Select(e => new Edge<TVertex>(indexToVertex(e.Source), indexToVertex(e.Target)));
+    public bool IsInEdgesEmpty(TVertex vertex) {
+        return graph.IsInEdgesEmpty(vertexToIndex(vertex));
+    }
+
+    public int InDegree(TVertex vertex) {
+        return graph.InDegree(vertexToIndex(vertex));
+    }
+
+    public IEnumerable<Edge<TVertex>> InEdges(TVertex vertex) {
+        return graph.InEdges(vertexToIndex(vertex))
+            .Select(e => new Edge<TVertex>(indexToVertex(e.Source), indexToVertex(e.Target)));
+    }
 
     public bool TryGetInEdges(TVertex vertex, [UnscopedRef] out IEnumerable<Edge<TVertex>> edges) {
         if (graph.TryGetInEdges(vertexToIndex(vertex), out var rawEdges)) {
@@ -162,4 +171,18 @@ public class WrappedBidirectionalMatrixGraph<TVertex> : IBidirectionalGraph<TVer
 
     public event EdgeAction<TVertex, Edge<TVertex>>? EdgeAdded;
     public event EdgeAction<TVertex, Edge<TVertex>>? EdgeRemoved;
+
+    public static WrappedBidirectionalMatrixGraph<Vertex> ForVertices(int rows, int columns, bool columnMajor = true) {
+        var indexToVertex = columnMajor switch {
+            true => i => Vertex.FromColumnMajorIndex(i, rows),
+            false => (Func<int, Vertex>)(i => Vertex.FromRowMajorIndex(i, columns))
+        };
+
+        var vertexToIndex = columnMajor switch {
+            true => v => v.ColumnMajorIndex(rows),
+            false => (Func<Vertex, int>)(v => v.RowMajorIndex(columns))
+        };
+
+        return new WrappedBidirectionalMatrixGraph<Vertex>(rows * columns, vertexToIndex, indexToVertex);
+    }
 }

@@ -20,11 +20,9 @@
 
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using AoC.Support;
 using MathNet.Numerics;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Single;
-using VDS.Common.Collections;
 
 namespace AoC.Support;
 
@@ -32,39 +30,37 @@ using Vertex = Vertex<int>;
 
 // Adjacency matrix for a grid graph with weights of 1 for each edge
 public class UniformDistanceMatrixGraph : ICloneable {
-    public int Count => vertices.Length;
-    public int Columns { get; }
-    public int Rows { get; }
-
     public delegate int VertexIndexMapper(Vertex vertex);
-    private Matrix<float> adjacencies;
-    private Matrix<float>? pairwiseDistances;
+
     private readonly VertexIndexMapper indexMapper;
     private readonly bool sparseAdjacencies;
-    private readonly Vertex[] vertices;
     private readonly Dictionary<Vertex, int> vertexIndices;
+    private readonly Vertex[] vertices;
+    private Matrix<float> adjacencies;
+    private Matrix<float>? pairwiseDistances;
 
     static UniformDistanceMatrixGraph() {
         if (Control.TryUseNativeCUDA()) {
             Debug.WriteLine("Using CUDA");
             return;
         }
-        
+
         if (Control.TryUseNativeMKL()) {
             Debug.WriteLine("Using MKL");
             return;
         }
-        
+
         if (Control.TryUseNativeOpenBLAS()) {
             Debug.WriteLine("Using OpenBLAS");
             return;
         }
-        
+
         Debug.WriteLine("Using managed");
     }
 
 
-    public UniformDistanceMatrixGraph(int rows, int columns, IEnumerable<Vertex> verts, bool sparseAdjacencies = true, VertexIndexMapper? mapper = null) {
+    public UniformDistanceMatrixGraph(int rows, int columns, IEnumerable<Vertex> verts, bool sparseAdjacencies = true,
+        VertexIndexMapper? mapper = null) {
         Rows = rows;
         Columns = columns;
 
@@ -74,13 +70,32 @@ public class UniformDistanceMatrixGraph : ICloneable {
         vertexIndices = new Dictionary<Vertex, int>(vertices.Length);
         for (var i = 0; i < vertices.Length; i++) {
             var vert = vertices[i];
-            if (!vert.ExistsInGrid(Columns, Rows)) {
+            if (!vert.ExistsInGrid(Columns, Rows))
                 throw new ArgumentOutOfRangeException(nameof(verts), vert, "Vertex is not in grid");
-            }
 
             vertexIndices[vert] = i;
         }
+
         MakeMatrix(vertices.Length);
+    }
+
+    public UniformDistanceMatrixGraph(UniformDistanceMatrixGraph other) {
+        Rows = other.Rows;
+        Columns = other.Columns;
+        adjacencies = other.adjacencies.Clone();
+        pairwiseDistances = other.pairwiseDistances?.Clone();
+        indexMapper = other.indexMapper;
+        sparseAdjacencies = other.sparseAdjacencies;
+        vertices = other.vertices.ToArray();
+        vertexIndices = new Dictionary<Vertex, int>(other.vertexIndices);
+    }
+
+    public int Count => vertices.Length;
+    public int Columns { get; }
+    public int Rows { get; }
+
+    public object Clone() {
+        return new UniformDistanceMatrixGraph(this);
     }
 
     private int GetVertexIndex(Vertex vertex) {
@@ -93,21 +108,16 @@ public class UniformDistanceMatrixGraph : ICloneable {
 
     [MemberNotNull(nameof(adjacencies))]
     private void MakeMatrix(int count) {
-        if (sparseAdjacencies) {
+        if (sparseAdjacencies)
             adjacencies = new SparseMatrix(count, count);
-        } else {
+        else
             adjacencies = DenseMatrix.Create(count, count, 0f);
-        }
     }
 
     private void AddEdge(int from, int to) {
-        if (from == to) {
-            throw new ArgumentException("Cannot add edge from a vertex to itself");
-        }
+        if (from == to) throw new ArgumentException("Cannot add edge from a vertex to itself");
 
-        if (HasEdge(from, to)) {
-            return;
-        }
+        if (HasEdge(from, to)) return;
 
         adjacencies[from, to] = 1;
         adjacencies[to, from] = 1;
@@ -119,17 +129,13 @@ public class UniformDistanceMatrixGraph : ICloneable {
     }
 
     public void AddEdge(Vertex from, Vertex to) {
-        if (from == to) {
-            throw new ArgumentException("Cannot add edge from a vertex to itself");
-        }
+        if (from == to) throw new ArgumentException("Cannot add edge from a vertex to itself");
 
-        if (!from.ExistsInGrid(Columns, Rows)) {
+        if (!from.ExistsInGrid(Columns, Rows))
             throw new ArgumentOutOfRangeException(nameof(from), from, "Vertex is not in grid");
-        }
 
-        if (!to.ExistsInGrid(Columns, Rows)) {
+        if (!to.ExistsInGrid(Columns, Rows))
             throw new ArgumentOutOfRangeException(nameof(to), to, "Vertex is not in grid");
-        }
 
         var toIdx = GetVertexIndex(to);
         var fromIdx = GetVertexIndex(from);
@@ -137,13 +143,9 @@ public class UniformDistanceMatrixGraph : ICloneable {
     }
 
     private void RemoveEdge(int from, int to) {
-        if (!HasEdge(from, to)) {
-            return;
-        }
+        if (!HasEdge(from, to)) return;
 
-        if (from == to) {
-            return;
-        }
+        if (from == to) return;
 
         adjacencies[from, to] = 0;
         adjacencies[to, from] = 0;
@@ -151,9 +153,7 @@ public class UniformDistanceMatrixGraph : ICloneable {
     }
 
     public void RemoveEdge(Vertex from, Vertex to) {
-        if (!ContainsVertex(from) || !ContainsVertex(to)) {
-            return;
-        }
+        if (!ContainsVertex(from) || !ContainsVertex(to)) return;
 
         var fromIdx = GetVertexIndex(from);
         var toIdx = GetVertexIndex(to);
@@ -199,13 +199,9 @@ public class UniformDistanceMatrixGraph : ICloneable {
     private static Matrix<float> CreateDg(Matrix<float> mg) {
         return mg.MapIndexed(
             (i, j, v) => {
-                if (i == j) {
-                    return 0f;
-                }
+                if (i == j) return 0f;
 
-                if (v == 1) {
-                    return 1f;
-                }
+                if (v == 1) return 1f;
 
                 return 2;
             },
@@ -217,15 +213,13 @@ public class UniformDistanceMatrixGraph : ICloneable {
         var mg2 = mg.MapIndexed(
             (i, j, mgij) => {
                 var mgsij = mgs[i, j];
-                if (i != j && (mgij == 1 || mgsij > 0)) {
-                    return 1f;
-                }
+                if (i != j && (mgij == 1 || mgsij > 0)) return 1f;
 
                 return 0f;
             }, Zeros.Include);
         return mg2;
     }
-    
+
     // Based on https://www.wisdom.weizmann.ac.il/~/oded/MC/apd.pdf
     private static Matrix<float> SeidelDistances(Matrix<float> a) {
         Matrix<float> b;
@@ -233,36 +227,26 @@ public class UniformDistanceMatrixGraph : ICloneable {
             var z = a * a;
             b = z.MapIndexed(
                 (i, j, zij) => {
-                    if (i == j) {
-                        return 0f;
-                    }
+                    if (i == j) return 0f;
 
-                    if (zij > 0) {
-                        return 1f;
-                    }
+                    if (zij > 0) return 1f;
 
                     return a[i, j];
                 }
             );
         }
-        
-        if (SeidelDone(b)) {
-            return 2 * b - a;
-        }
+
+        if (SeidelDone(b)) return 2 * b - a;
 
         var t = SeidelDistances(b);
         var x = t * a;
         var neighborCounts = a.RowSums();
         var d = t.MapIndexed((i, j, v) => {
-            if (i == j) {
-                return 0f;
-            }
+            if (i == j) return 0f;
 
-            if (x[i, j] >= neighborCounts[j] * v) {
-                return 2 * v;
-            } else {
-                return 2 * v - 1;
-            }
+            if (x[i, j] >= neighborCounts[j] * v) return 2 * v;
+
+            return 2 * v - 1;
         });
 
         return d;
@@ -271,42 +255,35 @@ public class UniformDistanceMatrixGraph : ICloneable {
     private bool IsConnected() {
         return ConnectedTo(0).Count == Count;
     }
-    
+
     private HashSet<int> ConnectedTo(int vertex) {
         var visited = new HashSet<int>();
         var toVisit = new Queue<int>();
         toVisit.Enqueue(vertex);
         while (toVisit.Count > 0) {
             var next = toVisit.Dequeue();
-            if (!visited.Add(next)) {
-                continue;
-            }
+            if (!visited.Add(next)) continue;
 
-            foreach (var neighbor in GetNeighbors(next)) {
-
-                toVisit.Enqueue(neighbor);
-            }
+            foreach (var neighbor in GetNeighbors(next)) toVisit.Enqueue(neighbor);
         }
 
         return visited;
     }
-    
+
     public IEnumerable<Vertex> ConnectedTo(Vertex vertex) {
         var idx = GetVertexIndex(vertex);
         var connected = ConnectedTo(idx);
         return connected.Select(VertexForIndex);
     }
-    
+
     // Returns the strongly connected component starting at the given vertex
     public UniformDistanceMatrixGraph SccStartingAt(Vertex vertex) {
         var connected = ConnectedTo(vertex).ToHashSet();
         var g = new UniformDistanceMatrixGraph(Rows, Columns, connected, sparseAdjacencies, indexMapper);
         foreach (var v in connected) {
-            foreach (var n in GetNeighbors(v)) {
-                if (connected.Contains(n)) {
+            foreach (var n in GetNeighbors(v))
+                if (connected.Contains(n))
                     g.AddEdge(v, n);
-                }
-            }
         }
 
         return g;
@@ -318,7 +295,8 @@ public class UniformDistanceMatrixGraph : ICloneable {
         if (connected.Count != Count) {
             var unconnected = Enumerable.Range(0, Count).Except(connected);
             var examples = string.Join(", ", unconnected.Take(5).Select(VertexForIndex).Select(v => v.ToString()));
-            throw new InvalidOperationException("Cannot compute pairwise distances on a disconnected graph, examples: {" + examples + "}");
+            throw new InvalidOperationException(
+                "Cannot compute pairwise distances on a disconnected graph, examples: {" + examples + "}");
         }
 
         var inp = DenseMatrix.OfMatrix(adjacencies);
@@ -327,29 +305,12 @@ public class UniformDistanceMatrixGraph : ICloneable {
     }
 
     public int GetDistance(int from, int to) {
-        if (pairwiseDistances == null) {
-            UpdatePairwiseDistances();
-        }
+        if (pairwiseDistances == null) UpdatePairwiseDistances();
 
         return int.CreateChecked(pairwiseDistances[from, to]);
     }
 
     public int GetDistance(Vertex from, Vertex to) {
         return GetDistance(GetVertexIndex(from), GetVertexIndex(to));
-    }
-
-    public UniformDistanceMatrixGraph(UniformDistanceMatrixGraph other) {
-        Rows = other.Rows;
-        Columns = other.Columns;
-        adjacencies = other.adjacencies.Clone();
-        pairwiseDistances = other.pairwiseDistances?.Clone();
-        indexMapper = other.indexMapper;
-        sparseAdjacencies = other.sparseAdjacencies;
-        vertices = other.vertices.ToArray();
-        vertexIndices = new Dictionary<Vertex, int>(other.vertexIndices);
-    }
-
-    public object Clone() {
-        return new UniformDistanceMatrixGraph(this);
     }
 }

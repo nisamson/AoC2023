@@ -18,8 +18,6 @@
 
 #endregion
 
-using AoC.Support;
-
 namespace AoC.Support.Test;
 
 [TestFixture]

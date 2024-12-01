@@ -1,12 +1,11 @@
 ﻿using System.Text;
 using AdventOfCodeSupport;
-using AoC2023;
 using AoC2023._2023;
 
 Console.OutputEncoding = Encoding.UTF8;
 var solutions = new AdventSolutions();
 // var day = solutions.GetMostRecentDay();
-var day = solutions.GetDay(2023, 23);
+var day = solutions.GetDay(2024, 1);
 await day.DownloadInputAsync();
 
 // day.Bag["part1Steps"] = "3";
@@ -25,9 +24,7 @@ await day.CheckPart2Async();
 //         advent.DoPart2();
 //     }
 // }
-if (day is Day01 d1) {
-    d1.PrintNumbers();
-}
+if (day is Day01 d1) d1.PrintNumbers();
 
 //
 //

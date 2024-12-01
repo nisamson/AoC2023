@@ -33,14 +33,10 @@ public static class GraphExtensions {
         stack.Push(root);
         while (stack.Count > 0) {
             var v = stack.Pop();
-            if (!visited.Add(v)) {
-                continue;
-            }
+            if (!visited.Add(v)) continue;
 
             yield return v;
-            foreach (var edge in graph.OutEdges(v)) {
-                stack.Push(edge.Target);
-            }
+            foreach (var edge in graph.OutEdges(v)) stack.Push(edge.Target);
         }
     }
 
@@ -56,7 +52,8 @@ public static class GraphExtensions {
     //     
     // }
 
-    public static IEnumerable<Edge<TVertex>> DfsPreorderEdges<TVertex, TEdge>(this IVertexListGraph<TVertex, TEdge> graph,
+    public static IEnumerable<Edge<TVertex>> DfsPreorderEdges<TVertex, TEdge>(
+        this IVertexListGraph<TVertex, TEdge> graph,
         TVertex root,
         IEqualityComparer<TVertex>? comparer = null) where TEdge : IEdge<TVertex> {
         comparer ??= EqualityComparer<TVertex>.Default;
@@ -65,14 +62,10 @@ public static class GraphExtensions {
         stack.Push(root);
         while (stack.Count > 0) {
             var v = stack.Pop();
-            if (!visited.Add(v)) {
-                continue;
-            }
+            if (!visited.Add(v)) continue;
 
             foreach (var edge in graph.OutEdges(v)) {
-                if (visited.Contains(edge.Target)) {
-                    continue;
-                }
+                if (visited.Contains(edge.Target)) continue;
 
                 stack.Push(edge.Target);
                 yield return new Edge<TVertex>(v, edge.Target);

@@ -85,19 +85,17 @@ public class ResizeableArrayTest {
     }
 
     [Test]
-    public void IndexOf()
-    {
+    public void IndexOf() {
         var array = new ResizeableArray<int>(Enumerable.Range(0, 10));
         Assert.That(array.IndexOf(5), Is.EqualTo(5));
         array.RemoveAt(5);
-        Assert.Multiple(() =>
-        {
+        Assert.Multiple(() => {
             Assert.That(array.IndexOf(5), Is.EqualTo(-1));
             Assert.That(array[^1], Is.EqualTo(9));
         });
         Assert.That(array.IndexOf(2), Is.EqualTo(2));
     }
-    
+
     [Test]
     public void Insert() {
         var array = new ResizeableArray<int>(Enumerable.Range(0, 10));
@@ -110,5 +108,4 @@ public class ResizeableArrayTest {
             }
         );
     }
-    
 }

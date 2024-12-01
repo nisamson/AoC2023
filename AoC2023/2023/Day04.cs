@@ -18,179 +18,165 @@
 
 #endregion
 
-    using System.Collections.Immutable;
-    using System.Text.RegularExpressions;
-    using AdventOfCodeSupport;
-    using Farkle;
-    using Farkle.Builder;
-    using Regex = Farkle.Builder.Regex;
+using System.Collections.Immutable;
+using System.Text.RegularExpressions;
+using AdventOfCodeSupport;
+using Farkle;
+using Farkle.Builder;
+using Regex = System.Text.RegularExpressions.Regex;
 
-    namespace AoC2023._2023;
+namespace AoC2023._2023;
 
-    internal record ScratchGame {
-        public int Id { get; init; } = 0;
-        public IReadOnlySet<int> Cards { get; init; } = ImmutableHashSet<int>.Empty;
-        public IReadOnlySet<int> WinningCards { get; init; } = ImmutableHashSet<int>.Empty;
+internal record ScratchGame {
+    private int? winCount;
 
-        public ScratchGame(int id, IEnumerable<int> cards, IEnumerable<int> winningCards) {
-            Id = id;
-            Cards = new HashSet<int>(cards);
-            WinningCards = new HashSet<int>(winningCards);
-        }
+    public ScratchGame(int id, IEnumerable<int> cards, IEnumerable<int> winningCards) {
+        Id = id;
+        Cards = new HashSet<int>(cards);
+        WinningCards = new HashSet<int>(winningCards);
+    }
 
-        public IEnumerable<int> PossessedWinningCards() {
-            return Cards.Where(WinningCards.Contains);
-        }
+    public int Id { get; init; }
+    public IReadOnlySet<int> Cards { get; init; } = ImmutableHashSet<int>.Empty;
+    public IReadOnlySet<int> WinningCards { get; init; } = ImmutableHashSet<int>.Empty;
 
-        private int? winCount;
+    public int WinCount {
+        get {
+            if (winCount.HasValue) return winCount.Value;
 
-        public int WinCount {
-            get {
-                if (winCount.HasValue) {
-                    return winCount.Value;
-                }
-
-                winCount = PossessedWinningCards().Count();
-                return winCount.Value;
-            }
-        }
-
-        public int Score() {
-            var winners = WinCount;
-            if (winners == 0) {
-                return 0;
-            }
-
-            var score = 1 << (winners - 1);
-            return score;
+            winCount = PossessedWinningCards().Count();
+            return winCount.Value;
         }
     }
 
-    static partial class ScratchLang {
-        public static readonly PrecompilableDesigntimeFarkle<ScratchGame> DesignTime;
-        public static readonly RuntimeFarkle<ScratchGame> Runtime;
-        public static readonly PrecompilableDesigntimeFarkle<List<ScratchGame>> DesignTimeArray;
-        public static readonly RuntimeFarkle<List<ScratchGame>> RuntimeArray;
-
-        static ScratchLang() {
-            var number = Terminals.Int32("number");
-            var card = Nonterminal.Create(
-                "scratchCard",
-                Terminal.Literal("Card").Appended()
-                    .Extend(number)
-                    .Append(Terminal.Literal(":"))
-                    .Extend(number.Many<int, List<int>>())
-                    .Append(Terminal.Literal("|"))
-                    .Extend(number.Many<int, List<int>>())
-                    .Finish((i, winners, present) => new ScratchGame(i, winners, present))
-            );
-            DesignTime = card.MarkForPrecompile();
-            Runtime = DesignTime.Build();
-            var multiple = card.Many<ScratchGame, List<ScratchGame>>();
-            DesignTimeArray = multiple.MarkForPrecompile();
-            RuntimeArray = DesignTimeArray.Build();
-        }
-
-        [GeneratedRegex(@"Card +(?<id>\d+): +(?<winners>(\d+ +)+)\| +(?<cards>(\d+ +)+)")]
-        private static partial System.Text.RegularExpressions.Regex GameRegex();
-
-        public static ScratchGame ParseOne(string line) {
-            var matches = GameRegex().Match(line);
-            if (!matches.Success) {
-                throw new ArgumentException($"Invalid game, {line}");
-            }
-
-            var id = int.Parse(matches.Groups["id"].Value);
-            var winners = matches.Groups["winners"]
-                .Value
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(int.Parse);
-            var cards = matches.Groups["cards"]
-                .Value.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(int.Parse);
-            return new ScratchGame(id, cards, winners);
-        }
+    public IEnumerable<int> PossessedWinningCards() {
+        return Cards.Where(WinningCards.Contains);
     }
 
-    public class Day04 : AdventBase, IAdvent {
-        private readonly List<ScratchGame> games = new List<ScratchGame>();
+    public int Score() {
+        var winners = WinCount;
+        if (winners == 0) return 0;
 
-        public Day04() {
-            Bag["example"] = """
-                             Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
-                             Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
-                             Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
-                             Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83
-                             Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36
-                             Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
-                             """;
-            Bag["exampleResult"] = "13";
+        var score = 1 << (winners - 1);
+        return score;
+    }
+}
+
+internal static partial class ScratchLang {
+    public static readonly PrecompilableDesigntimeFarkle<ScratchGame> DesignTime;
+    public static readonly RuntimeFarkle<ScratchGame> Runtime;
+    public static readonly PrecompilableDesigntimeFarkle<List<ScratchGame>> DesignTimeArray;
+    public static readonly RuntimeFarkle<List<ScratchGame>> RuntimeArray;
+
+    static ScratchLang() {
+        var number = Terminals.Int32("number");
+        var card = Nonterminal.Create(
+            "scratchCard",
+            Terminal.Literal("Card").Appended()
+                .Extend(number)
+                .Append(Terminal.Literal(":"))
+                .Extend(number.Many<int, List<int>>())
+                .Append(Terminal.Literal("|"))
+                .Extend(number.Many<int, List<int>>())
+                .Finish((i, winners, present) => new ScratchGame(i, winners, present))
+        );
+        DesignTime = card.MarkForPrecompile();
+        Runtime = DesignTime.Build();
+        var multiple = card.Many<ScratchGame, List<ScratchGame>>();
+        DesignTimeArray = multiple.MarkForPrecompile();
+        RuntimeArray = DesignTimeArray.Build();
+    }
+
+    [GeneratedRegex(@"Card +(?<id>\d+): +(?<winners>(\d+ +)+)\| +(?<cards>(\d+ +)+)")]
+    private static partial Regex GameRegex();
+
+    public static ScratchGame ParseOne(string line) {
+        var matches = GameRegex().Match(line);
+        if (!matches.Success) throw new ArgumentException($"Invalid game, {line}");
+
+        var id = int.Parse(matches.Groups["id"].Value);
+        var winners = matches.Groups["winners"]
+            .Value
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(int.Parse);
+        var cards = matches.Groups["cards"]
+            .Value.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(int.Parse);
+        return new ScratchGame(id, cards, winners);
+    }
+}
+
+public class Day04 : AdventBase, IAdvent {
+    private readonly List<ScratchGame> games = new();
+
+    public Day04() {
+        Bag["example"] = """
+                         Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
+                         Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
+                         Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
+                         Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83
+                         Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36
+                         Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
+                         """;
+        Bag["exampleResult"] = "13";
+    }
+
+    public object DoPart1() {
+        return InternalPart1();
+    }
+
+    public object DoPart2() {
+        return InternalPart2();
+    }
+
+    public void DoLoad() { }
+
+    protected override void InternalOnLoad() {
+        games.Clear();
+        var result = ScratchLang.RuntimeArray.Parse(Input.Text);
+        if (result.IsError) throw new ArgumentException($"Invalid games, {result.ErrorValue}");
+
+        games.AddRange(result.ResultValue);
+    }
+
+    protected override object InternalPart1() {
+        var localGames = games.ToArray();
+        return localGames.Sum(g => g.Score());
+    }
+
+
+    protected override object InternalPart2() {
+        var localGames = games.ToArray();
+        return new GameScorer(localGames).ScoreGames();
+    }
+
+    private class GameScorer {
+        private readonly ScratchGame[] games;
+        private readonly int[] gameScores;
+        private Dictionary<(int, int), int> scoreCache = new();
+
+        public GameScorer(ScratchGame[] games) {
+            this.games = games;
+            gameScores = new int[games.Length];
+            Array.Fill(gameScores, -1);
         }
 
-        protected override void InternalOnLoad() {
-            games.Clear();
-            var result = ScratchLang.RuntimeArray.Parse(Input.Text);
-            if (result.IsError) {
-                throw new ArgumentException($"Invalid games, {result.ErrorValue}");
-            }
+        public int ScoreGame(int index) {
+            if (gameScores[index] >= 0) return gameScores[index];
 
-            games.AddRange(result.ResultValue);
+            gameScores[index] = 1 + ScoreGames(index + 1, games[index].WinCount);
+            return gameScores[index];
         }
 
-        protected override object InternalPart1() {
-            var localGames = games.ToArray();
-            return localGames.Sum(g => g.Score());
+        public int ScoreGames(int startIndex, int count) {
+            var total = 0;
+            for (var i = startIndex + count - 1; i >= startIndex; i--) total += ScoreGame(i);
+
+            return total;
         }
 
-        class GameScorer {
-            private ScratchGame[] games;
-            private int[] gameScores;
-            private Dictionary<(int, int), int> scoreCache = new Dictionary<(int, int), int>();
-
-            public GameScorer(ScratchGame[] games) {
-                this.games = games;
-                gameScores = new int[games.Length];
-                Array.Fill(gameScores, -1);
-            }
-
-            public int ScoreGame(int index) {
-                if (gameScores[index] >= 0) {
-                    return gameScores[index];
-                }
-
-                gameScores[index] = 1 + ScoreGames(index + 1, games[index].WinCount);
-                return gameScores[index];
-            }
-
-            public int ScoreGames(int startIndex, int count) {
-                var total = 0;
-                for (var i = startIndex + count - 1; i >= startIndex; i--) {
-                    total += ScoreGame(i);
-                }
-
-                return total;
-            }
-
-            public int ScoreGames() {
-                return ScoreGames(0, games.Length);
-            }
-        }
-
-
-        protected override object InternalPart2() {
-            var localGames = games.ToArray();
-            return new GameScorer(localGames).ScoreGames();
-        }
-
-        public object DoPart1() {
-            return InternalPart1();
-        }
-
-        public object DoPart2() {
-            return InternalPart2();
-        }
-
-        public void DoLoad() {
-            
+        public int ScoreGames() {
+            return ScoreGames(0, games.Length);
         }
     }
+}

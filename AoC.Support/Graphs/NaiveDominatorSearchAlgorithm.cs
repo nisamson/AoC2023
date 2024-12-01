@@ -18,9 +18,7 @@
 
 #endregion
 
-using System.Collections.Frozen;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using AoC.Support.Functional;
 using QuikGraph;
 
@@ -28,35 +26,33 @@ namespace AoC.Support.Graphs;
 
 public class NaiveDominatorSearchAlgorithm<TGraph, TVertex, TEdge> : DominatorSearchAlgorithm<TGraph, TVertex, TEdge>
     where TEdge : IEdge<TVertex> where TVertex : notnull where TGraph : IBidirectionalGraph<TVertex, TEdge> {
-    private readonly ImmutableHashSet<TVertex> rootReachableVertices;
-    private readonly TVertex[] preorder;
-
-    private readonly IDictionary<TVertex, int> preorderIndex = new Dictionary<TVertex, int>();
-
-    // vertex -> immediate dominator up the tree
-    private readonly Dictionary<TVertex, TVertex> immediateDominators = new();
+    private readonly Dictionary<TVertex, ImmutableHashSet<TVertex>> dominated = new();
 
     // vertex -> set of vertices that are dominated by vertex
     private readonly Dictionary<TVertex, ImmutableHashSet<TVertex>> dominators = new();
-    private readonly Dictionary<TVertex, ImmutableHashSet<TVertex>> dominated = new();
+
+    // vertex -> immediate dominator up the tree
+    private readonly Dictionary<TVertex, TVertex> immediateDominators = new();
+    private readonly TVertex[] preorder;
+
+    private readonly IDictionary<TVertex, int> preorderIndex = new Dictionary<TVertex, int>();
+    private readonly ImmutableHashSet<TVertex> rootReachableVertices;
 
     public NaiveDominatorSearchAlgorithm(TGraph graph,
         TVertex root,
         Func<TVertex, TVertex, TEdge> edgeFactory,
-        IEqualityComparer<TVertex>? comparer = null): base(graph, root, edgeFactory, comparer) {
+        IEqualityComparer<TVertex>? comparer = null) : base(graph, root, edgeFactory, comparer) {
         preorder = graph.DfsPreorder(root).ToArray();
-        for (var i = 0; i < preorder.Length; i++) {
-            preorderIndex[preorder[i]] = i;
-        }
+        for (var i = 0; i < preorder.Length; i++) preorderIndex[preorder[i]] = i;
         rootReachableVertices = preorder.ToImmutableHashSet(comparer);
         dominators[root] = ImmutableHashSet<TVertex>.Empty.WithComparer(comparer).Add(root);
     }
 
+    public override BidirectionalMatrixPartialGraph<TVertex, TEdge> DominatorTree => GetDominanceTree();
+
     public override void Compute() {
         ComputeDominators();
     }
-
-    public override BidirectionalMatrixPartialGraph<TVertex, TEdge> DominatorTree => GetDominanceTree();
 
     public override bool Dominates(TVertex d, TVertex n) {
         return dominators[n].Contains(d);
@@ -67,38 +63,30 @@ public class NaiveDominatorSearchAlgorithm<TGraph, TVertex, TEdge> : DominatorSe
     }
 
     private ReadOnlySpan<TVertex> Successors(TVertex v) {
-        var idx = (preorderIndex[v] + 1);
-        if (idx >= preorder.Length) {
-            return ReadOnlySpan<TVertex>.Empty;
-        }
+        var idx = preorderIndex[v] + 1;
+        if (idx >= preorder.Length) return ReadOnlySpan<TVertex>.Empty;
 
         return preorder.AsSpan()[idx..];
     }
 
     private void ComputeDominators() {
-        foreach (var n in rootReachableVertices) {
+        foreach (var n in rootReachableVertices)
             // Console.WriteLine($"Processing dominated for {n}");
             dominated[n] = ComputeDominated(n);
-        }
 
-        foreach (var n in rootReachableVertices) {
+        foreach (var n in rootReachableVertices)
             // Console.WriteLine($"Processing dominators for {n}");
             dominators[n] = dominated
                 .Where(kv => kv.Value.Contains(n))
                 .Select(kv => kv.Key).ToImmutableHashSet(Comparer);
-        }
     }
 
     private ImmutableHashSet<TVertex> PredecessorDominators(TVertex v) {
         var preds = Predecessors(v);
-        if (preds.Length == 0) {
-            return ImmutableHashSet<TVertex>.Empty.WithComparer(Comparer);
-        }
+        if (preds.Length == 0) return ImmutableHashSet<TVertex>.Empty.WithComparer(Comparer);
 
         var doms = dominators[preds[0]];
-        foreach (var p in preds) {
-            doms = doms.Intersect(dominators[p]);
-        }
+        foreach (var p in preds) doms = doms.Intersect(dominators[p]);
 
         return doms;
     }
@@ -106,20 +94,14 @@ public class NaiveDominatorSearchAlgorithm<TGraph, TVertex, TEdge> : DominatorSe
     // A node w immediately dominates v if w dominates v, but all other nodes that dominate v also dominate w.
     // The root node has no immediate dominator.
     private IOption<TVertex> ImmediateDominator(TVertex v) {
-        if (Comparer.Equals(v, Root)) {
-            return Option.None<TVertex>();
-        }
+        if (Comparer.Equals(v, Root)) return Option.None<TVertex>();
 
-        if (immediateDominators.TryGetValue(v, out var idom)) {
-            return idom.Some();
-        }
+        if (immediateDominators.TryGetValue(v, out var idom)) return idom.Some();
 
         var doms = dominators[v];
 
         foreach (var w in doms) {
-            if (!ImmediatelyDominates(w, v)) {
-                continue;
-            }
+            if (!ImmediatelyDominates(w, v)) continue;
 
             idom = w;
             break;
@@ -131,17 +113,13 @@ public class NaiveDominatorSearchAlgorithm<TGraph, TVertex, TEdge> : DominatorSe
     }
 
     public override bool ImmediatelyDominates(TVertex u, TVertex v) {
-        if (immediateDominators.TryGetValue(v, out var idom)) {
-            return Comparer.Equals(idom, u);
-        }
+        if (immediateDominators.TryGetValue(v, out var idom)) return Comparer.Equals(idom, u);
 
         return StrictlyDominates(u, v) && !dominators[v].Any(w => StrictlyDominates(u, w) && StrictlyDominates(w, v));
     }
 
     public override IOption<TVertex> ImmediateDominatorOf(TVertex v) {
-        if (Comparer.Equals(v, Root)) {
-            return Option.None<TVertex>();
-        }
+        if (Comparer.Equals(v, Root)) return Option.None<TVertex>();
         return immediateDominators[v].Some();
     }
 
@@ -152,12 +130,11 @@ public class NaiveDominatorSearchAlgorithm<TGraph, TVertex, TEdge> : DominatorSe
     }
 
     public BidirectionalMatrixPartialGraph<TVertex, TEdge> GetDominanceTree() {
-        var tree = new BidirectionalMatrixPartialGraph<TVertex, TEdge>(rootReachableVertices.Count, EdgeFactory, Comparer);
+        var tree = new BidirectionalMatrixPartialGraph<TVertex, TEdge>(rootReachableVertices.Count, EdgeFactory,
+            Comparer);
         foreach (var v in rootReachableVertices) {
             var idom = ImmediateDominator(v);
-            if (idom.IsNone) {
-                continue;
-            }
+            if (idom.IsNone) continue;
 
             tree.AddVerticesAndEdge(EdgeFactory(idom.Value, v));
         }
@@ -172,6 +149,6 @@ public static class NaiveDominatorSearchAlgorithm {
         Func<TVertex, TVertex, TEdge> edgeFactory,
         IEqualityComparer<TVertex>? comparer = null)
         where TEdge : IEdge<TVertex> where TVertex : notnull where TGraph : IBidirectionalGraph<TVertex, TEdge> {
-        return new(graph, root, edgeFactory, comparer);
+        return new NaiveDominatorSearchAlgorithm<TGraph, TVertex, TEdge>(graph, root, edgeFactory, comparer);
     }
 }

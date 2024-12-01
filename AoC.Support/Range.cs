@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC2023 - Range.cs
 // Copyright (C) 2023 Nicholas
 // 
@@ -14,6 +15,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #endregion
 
 using System.Collections;
@@ -21,10 +23,10 @@ using System.Numerics;
 
 namespace AoC.Support;
 
-public struct Range<TNumeric>: IEnumerable<TNumeric> where TNumeric: INumber<TNumeric> {
+public struct Range<TNumeric> : IEnumerable<TNumeric> where TNumeric : INumber<TNumeric> {
     public TNumeric Start { get; }
     public TNumeric End { get; }
-    
+
     public bool InclusiveEnd { get; }
 
     public Range(TNumeric start, TNumeric end, bool inclusiveEnd = false) {
@@ -45,9 +47,8 @@ public struct Range<TNumeric>: IEnumerable<TNumeric> where TNumeric: INumber<TNu
     }
 
     public IEnumerator<TNumeric> GetEnumerator(TNumeric step) {
-        if (step.CompareTo(TNumeric.Zero) <= 0) {
+        if (step.CompareTo(TNumeric.Zero) <= 0)
             throw new ArgumentException("Step must be greater than zero", nameof(step));
-        }
         var current = Start;
         var cmp = current.CompareTo(End);
         while (cmp < 0) {
@@ -55,16 +56,13 @@ public struct Range<TNumeric>: IEnumerable<TNumeric> where TNumeric: INumber<TNu
             current += step;
             cmp = current.CompareTo(End);
         }
-        if (InclusiveEnd) {
-            yield return End;
-        }
+
+        if (InclusiveEnd) yield return End;
     }
-    
+
     public bool Contains(TNumeric value) {
         var cmp = value.CompareTo(Start);
-        if (cmp < 0) {
-            return false;
-        }
+        if (cmp < 0) return false;
         cmp = value.CompareTo(End);
         switch (cmp) {
             case > 0:

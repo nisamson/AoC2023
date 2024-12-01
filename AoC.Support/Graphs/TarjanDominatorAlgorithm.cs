@@ -28,31 +28,31 @@ public class TarjanDominatorAlgorithm<TGraph, TVertex, TEdge>
     where TGraph : IBidirectionalGraph<TVertex, TEdge>
     where TVertex : notnull
     where TEdge : IEdge<TVertex> {
+    private readonly IEqualityComparer<TVertex> comparer;
+    private readonly BidirectionalMatrixPartialGraph<TVertex, Edge<TVertex>> dfsTree;
 
     private readonly TGraph graph;
-    private readonly TGraph reachabilityGraph;
-    private readonly BidirectionalMatrixPartialGraph<TVertex, Edge<TVertex>> dfsTree;
-    private readonly TVertex root;
-    private readonly IEqualityComparer<TVertex> comparer;
 
     // id
     private readonly Dictionary<TVertex, TVertex> immediateDominators;
-    private readonly Dictionary<TVertex, TVertex> semiDominators;
     private readonly Dictionary<TVertex, int> preorderIndices;
     private readonly List<TVertex> preorderVertices;
+    private readonly TGraph reachabilityGraph;
+    private readonly TVertex root;
+    private readonly Dictionary<TVertex, TVertex> semiDominators;
 
     private bool IsDescendantOf(TVertex v, TVertex u) {
         return reachabilityGraph.ContainsEdge(v, u);
     }
-    
+
     private bool IsAncestorOf(TVertex v, TVertex u) {
         return reachabilityGraph.ContainsEdge(u, v);
     }
-    
+
     private bool IsProperAncestorOf(TVertex v, TVertex u) {
         return IsAncestorOf(v, u) && !comparer.Equals(v, u);
     }
-    
+
     private bool IsProperDescendantOf(TVertex v, TVertex u) {
         return IsDescendantOf(v, u) && !comparer.Equals(v, u);
     }
@@ -62,7 +62,7 @@ public class TarjanDominatorAlgorithm<TGraph, TVertex, TEdge>
             .Select(e => e.Target)
             .Where(w => !comparer.Equals(v, w));
     }
-    
+
     private bool IsOnProperPath(TVertex v, TVertex u, TVertex w) {
         return IsProperAncestorOf(v, u) && IsAncestorOf(u, w);
     }
@@ -98,17 +98,14 @@ public class TarjanDominatorAlgorithm<TGraph, TVertex, TEdge>
         }
 
         ArgumentNullException.ThrowIfNull(wbar);
-        foreach (var w in preorderVertices) {
-            if (comparer.Equals(w, wbar)) {
+        foreach (var w in preorderVertices)
+            if (comparer.Equals(w, wbar))
                 immediateDominators[w] = semiDominators[w];
-            } else {
+            else
                 immediateDominators[w] = immediateDominators[wbar];
-            }
-        }
     }
 
     private void ComputeSemiDominator(TVertex v) {
         throw new NotImplementedException();
     }
-
 }

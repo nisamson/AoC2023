@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC2023 - Day01.cs
 // Copyright (C) 2023 Nicholas Samson
 // 
@@ -14,26 +15,25 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #endregion
 
-using System.Diagnostics;
 using System.Text.RegularExpressions;
-using AdventOfCodeSupport;
 
-namespace AoC2023._2023; 
+namespace AoC2023._2023;
 
 public partial class Day01 : Adventer {
     protected override object InternalPart1() {
         return Input.Lines.Select(x => {
-            var digits = x.Where(char.IsDigit).ToArray();
-            return int.Parse($"{digits.First()}{digits.Last()}");
-        })
-        .Sum();
+                var digits = x.Where(char.IsDigit).ToArray();
+                return int.Parse($"{digits.First()}{digits.Last()}");
+            })
+            .Sum();
     }
 
     [GeneratedRegex(@"^((one)|(two)|(three)|(four)|(five)|(six)|(seven)|(eight)|(nine)|(\d))")]
     private static partial Regex MatchDigits();
-    
+
     private static int GetDigit(string input) {
         return input switch {
             "one" or "1" => 1,
@@ -55,9 +55,7 @@ public partial class Day01 : Adventer {
         for (var i = 0; i < input.Length; i++) {
             var inp = input[i..];
             var match = MatchDigits().Match(inp);
-            if (!match.Success) {
-                continue;
-            }
+            if (!match.Success) continue;
 
             var digit = GetDigit(match.Value);
             yield return digit;
@@ -66,11 +64,11 @@ public partial class Day01 : Adventer {
 
     protected override object InternalPart2() {
         return Input.Lines.Select(x => {
-            var digits = GetDigits(x).ToArray();
-            var o = digits[0] * 10 + digits[^1];
-            return o;
+                var digits = GetDigits(x).ToArray();
+                var o = digits[0] * 10 + digits[^1];
+                return o;
             })
-        .Sum();
+            .Sum();
     }
 
     public void PrintNumbers() {

@@ -18,7 +18,6 @@
 
 #endregion
 
-using AoC.Support;
 using MathNet.Numerics.LinearAlgebra.Single;
 
 namespace AoC.Support.Test;
@@ -46,12 +45,12 @@ public class VertexTest {
             () => {
                 Assert.That(calcx, Is.EqualTo(x));
                 Assert.That(calcy, Is.EqualTo(y));
-                Assert.That(calcx, Is.InRange(0, width-1));
-                Assert.That(calcy, Is.InRange(0, height-1));
+                Assert.That(calcx, Is.InRange(0, width - 1));
+                Assert.That(calcy, Is.InRange(0, height - 1));
             }
         );
     }
-    
+
     [Test]
     public void RowMajorOrderIndexing(
         [Random(1, MaxArraySideLength + 1, 10)]
@@ -68,12 +67,12 @@ public class VertexTest {
             () => {
                 Assert.That(calcx, Is.EqualTo(x));
                 Assert.That(calcy, Is.EqualTo(y));
-                Assert.That(calcx, Is.InRange(0, width-1));
-                Assert.That(calcy, Is.InRange(0, height-1));
+                Assert.That(calcx, Is.InRange(0, width - 1));
+                Assert.That(calcy, Is.InRange(0, height - 1));
             }
         );
     }
-    
+
     [Test]
     public void ColumnMajorOrderMatrixIndexing(
         [Random(1, MaxArraySideLength + 1, 10)]
@@ -88,17 +87,17 @@ public class VertexTest {
         var matrix = SparseMatrix.Create(height, width, 0);
         matrix[y, x] = 1;
         var columnMajor = matrix.ToColumnMajorArray();
-        
+
         Assume.That(columnMajor.Length, Is.EqualTo(height * width));
-        
+
         Assert.Multiple(
             () => {
-                Assert.That(index, Is.InRange(0, columnMajor.Length-1));
+                Assert.That(index, Is.InRange(0, columnMajor.Length - 1));
                 Assert.That(columnMajor[index], Is.EqualTo(1));
             }
         );
     }
-    
+
     [Test]
     public void RowMajorOrderMatrixIndexing(
         [Random(1, MaxArraySideLength + 1, 10)]
@@ -113,16 +112,14 @@ public class VertexTest {
         var matrix = SparseMatrix.Create(height, width, 0);
         matrix[y, x] = 1;
         var rowMajor = matrix.ToRowMajorArray();
-        
+
         Assume.That(rowMajor.Length, Is.EqualTo(height * width));
-        
+
         Assert.Multiple(
             () => {
-                Assert.That(index, Is.InRange(0, rowMajor.Length-1));
+                Assert.That(index, Is.InRange(0, rowMajor.Length - 1));
                 Assert.That(rowMajor[index], Is.EqualTo(1));
             }
         );
     }
-    
-    
 }

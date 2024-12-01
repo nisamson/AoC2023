@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC.Support - MatrixStorage.cs
 // Copyright (C) 2023 Nicholas
 // 
@@ -14,36 +15,31 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #endregion
 
 using System.Numerics;
-using CommunityToolkit.HighPerformance;
-using ILGPU;
-using ILGPU.Runtime;
 
 namespace AoC.Support.Matrix;
 
-public abstract class MatrixStorage<T> where T: unmanaged, INumber<T> {
-    
-    public abstract T this[int row, int column] {
-        get;
-        set;
-    }
-    
-    public int RowCount { get; }
-    public int ColumnCount { get; }
-    
+public abstract class MatrixStorage<T> where T : unmanaged, INumber<T> {
     protected MatrixStorage(int rowCount, int columnCount) {
         ArgumentOutOfRangeException.ThrowIfNegative(rowCount, nameof(rowCount));
         ArgumentOutOfRangeException.ThrowIfNegative(columnCount, nameof(columnCount));
-        ArgumentOutOfRangeException.ThrowIfGreaterThan((long) rowCount * (long) columnCount, int.MaxValue, "rowCount and columnCount");
-        
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(rowCount * (long)columnCount, int.MaxValue,
+            "rowCount and columnCount");
+
         RowCount = rowCount;
         ColumnCount = columnCount;
     }
-    
+
+    public abstract T this[int row, int column] { get; set; }
+
+    public int RowCount { get; }
+    public int ColumnCount { get; }
+
     public abstract bool IsMutableAt(int row, int column);
     public abstract MatrixStorage<T> Clone();
-    
+
     // public 
 }

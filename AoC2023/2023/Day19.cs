@@ -27,12 +27,57 @@ using Farkle.Builder;
 namespace AoC2023._2023;
 
 public class Day19 : Adventer {
+    public delegate long BoundsFunc(Bounds bounds);
+
+    public enum ComparisonKind {
+        LessThan,
+        GreaterThan
+    }
+
+
+    public enum ResultKind {
+        Accept,
+        Reject
+    }
+
+    private Func<Part, ResultKind> part1;
+
+    private ModuleNode problem;
+
+    protected override void InternalOnLoad() {
+        var result = Lang.Runtime.Parse(Input.Text);
+        if (result.IsError) throw new Exception(result.ErrorValue.ToString());
+
+        problem = result.ResultValue;
+        var compiler = new Part1Compiler(Lang.FromFile("19.txt"));
+        part1 = compiler.Compile(problem).Compile();
+    }
+
+    protected override object InternalPart1() {
+        return problem.Parts
+            .Select(s => s.Part)
+            .Where(s => part1(s) == ResultKind.Accept)
+            .Sum(p => p.Value());
+    }
+
+    protected override object InternalPart2() {
+        var bounds = Bounds.Start;
+        var detector = new BoundsDetector();
+        var boundsFunc = detector.Visit(problem);
+        var total = boundsFunc(bounds);
+        return total;
+    }
+
     public readonly record struct Part(int X, int M, int A, int S) {
-        public int Value() => X + M + A + S;
+        public int Value() {
+            return X + M + A + S;
+        }
     }
 
     public abstract class AstVisitor<TResult> {
-        public virtual TResult Visit(AstNode node) => node.Accept(this);
+        public virtual TResult Visit(AstNode node) {
+            return node.Accept(this);
+        }
 
         public abstract TResult Visit(ModuleNode node);
         public abstract TResult Visit(TestNode node);
@@ -51,28 +96,26 @@ public class Day19 : Adventer {
 
         private SymbolDocumentInfo Document { get; }
 
-        private DebugInfoExpression DebugInfo(AstNode node) {
-            return Expression.DebugInfo(
-                Document,
-                (int) node.Start.Line,
-                (int) node.Start.Column,
-                (int) node.End.Line,
-                (int) node.End.Column
-            );
-        }
-
         private Dictionary<string, LabelTarget> Labels { get; } = new();
         private LabelTarget ReturnLabel { get; } = Expression.Label(typeof(ResultKind));
         private ParameterExpression Input { get; } = Expression.Parameter(typeof(Part), "part");
+
+        private DebugInfoExpression DebugInfo(AstNode node) {
+            return Expression.DebugInfo(
+                Document,
+                (int)node.Start.Line,
+                (int)node.Start.Column,
+                (int)node.End.Line,
+                (int)node.End.Column
+            );
+        }
 
         private MemberExpression AccessPartField(string name) {
             return Expression.Property(Input, name.ToUpper());
         }
 
         private LabelTarget GetLabel(string name) {
-            if (Labels.TryGetValue(name, out var label)) {
-                return label;
-            }
+            if (Labels.TryGetValue(name, out var label)) return label;
 
             label = Expression.Label(name);
             Labels.Add(name, label);
@@ -126,9 +169,9 @@ public class Day19 : Adventer {
             var left = node.left.Accept(this);
             var right = node.right.Accept(this);
             var op = node.op switch {
-                ComparisonKind.LessThan    => Expression.LessThan(left, right),
+                ComparisonKind.LessThan => Expression.LessThan(left, right),
                 ComparisonKind.GreaterThan => Expression.GreaterThan(left, right),
-                _                          => throw new UnreachableException(),
+                _ => throw new UnreachableException()
             };
 
             var then = node.action.Accept(this);
@@ -150,17 +193,12 @@ public class Day19 : Adventer {
             var action = node.Action;
             var debugInfo = DebugInfo(node);
             Expression? retExpr = null;
-            if (action.Result is not null) {
+            if (action.Result is not null)
                 retExpr = Expression.Return(ReturnLabel, Expression.Constant(action.Result.Value, typeof(ResultKind)));
-            }
 
-            if (action.NextTest is not null) {
-                retExpr = Expression.Goto(GetLabel(action.NextTest));
-            }
+            if (action.NextTest is not null) retExpr = Expression.Goto(GetLabel(action.NextTest));
 
-            if (retExpr is not null) {
-                return Expression.Block(debugInfo, retExpr);
-            }
+            if (retExpr is not null) return Expression.Block(debugInfo, retExpr);
 
             return debugInfo;
         }
@@ -186,12 +224,15 @@ public class Day19 : Adventer {
 
     public record TestNode(Position Start, Position End, string Name, IReadOnlyList<StatementNode> Statements)
         : AstNode(Start, End) {
+        public bool IsTerminal => Statements.All(s => s.IsTerminal);
+
         public override TResult Accept<TResult>(AstVisitor<TResult> visitor) {
             return visitor.Visit(this);
         }
 
-        public bool IsTerminal => Statements.All(s => s.IsTerminal);
-        public IEnumerable<string> References() => Statements.SelectMany(s => s.References());
+        public IEnumerable<string> References() {
+            return Statements.SelectMany(s => s.References());
+        }
     }
 
     public abstract record StatementNode(Position Start, Position End) : AstNode(Start, End) {
@@ -200,54 +241,63 @@ public class Day19 : Adventer {
     }
 
     public record AcceptStatementNode(Position Start, Position End) : StatementNode(Start, End) {
+        public override bool IsTerminal => true;
+
         public override TResult Accept<TResult>(AstVisitor<TResult> visitor) {
             return visitor.Visit(this);
         }
 
-        public override bool IsTerminal => true;
-        public override IEnumerable<string> References() => Enumerable.Empty<string>();
+        public override IEnumerable<string> References() {
+            return Enumerable.Empty<string>();
+        }
     }
 
     public record RejectStatementNode(Position Start, Position End) : StatementNode(Start, End) {
-        public override TResult Accept<TResult>(AstVisitor<TResult> visitor) {
-            return visitor.Visit(this);
-        }
-
         public override bool IsTerminal => true;
-        public override IEnumerable<string> References() => Enumerable.Empty<string>();
-    }
 
-    public enum ComparisonKind {
-        LessThan,
-        GreaterThan,
-    }
-
-    public record ConditionTestNode(Position Start, Position End, ComparisonKind op, AccessorNode left, LiteralNode right, ActionNode action)
-        : StatementNode(Start, End) {
         public override TResult Accept<TResult>(AstVisitor<TResult> visitor) {
             return visitor.Visit(this);
         }
 
+        public override IEnumerable<string> References() {
+            return Enumerable.Empty<string>();
+        }
+    }
+
+    public record ConditionTestNode(
+        Position Start,
+        Position End,
+        ComparisonKind op,
+        AccessorNode left,
+        LiteralNode right,
+        ActionNode action)
+        : StatementNode(Start, End) {
         public override bool IsTerminal => action.IsTerminal;
 
-        public override IEnumerable<string> References() => action.References();
+        public override TResult Accept<TResult>(AstVisitor<TResult> visitor) {
+            return visitor.Visit(this);
+        }
+
+        public override IEnumerable<string> References() {
+            return action.References();
+        }
 
         public Bounds Accepted(Bounds b) {
             var relevantBound = left.AccessBound(b);
             var newBound = op switch {
-                ComparisonKind.LessThan    => relevantBound.Merge(Bound.AtMost(right.Value - 1)),
+                ComparisonKind.LessThan => relevantBound.Merge(Bound.AtMost(right.Value - 1)),
                 ComparisonKind.GreaterThan => relevantBound.Merge(Bound.AtLeast(right.Value + 1)),
-                _                          => throw new UnreachableException(),
+                _ => throw new UnreachableException()
             };
             return left.UpdateBound(b, newBound);
         }
-        
+
         public Bounds Rejected(Bounds b) {
             var relevantBound = left.AccessBound(b);
             var newBound = op switch {
-                ComparisonKind.LessThan    => relevantBound.Merge(Bound.AtLeast(right.Value)),
+                ComparisonKind.LessThan => relevantBound.Merge(Bound.AtLeast(right.Value)),
                 ComparisonKind.GreaterThan => relevantBound.Merge(Bound.AtMost(right.Value)),
-                _                          => throw new UnreachableException(),
+                _ => throw new UnreachableException()
             };
             return left.UpdateBound(b, newBound);
         }
@@ -259,34 +309,34 @@ public class Day19 : Adventer {
         public override TResult Accept<TResult>(AstVisitor<TResult> visitor) {
             return visitor.Visit(this);
         }
-        
+
         public Func<Part, int> Accessor() {
             return Name switch {
                 "x" => p => p.X,
                 "m" => p => p.M,
                 "a" => p => p.A,
                 "s" => p => p.S,
-                _   => throw new UnreachableException(),
+                _ => throw new UnreachableException()
             };
         }
-        
+
         public Bound AccessBound(Bounds b) {
             return Name switch {
                 "x" => b.X,
                 "m" => b.M,
                 "a" => b.A,
                 "s" => b.S,
-                _   => throw new UnreachableException(),
+                _ => throw new UnreachableException()
             };
         }
-        
+
         public Bounds UpdateBound(Bounds bs, Bound b) {
             return Name switch {
                 "x" => bs with { X = b },
                 "m" => bs with { M = b },
                 "a" => bs with { A = b },
                 "s" => bs with { S = b },
-                _   => throw new UnreachableException(),
+                _ => throw new UnreachableException()
             };
         }
     }
@@ -298,16 +348,14 @@ public class Day19 : Adventer {
     }
 
     public record ActionNode(Position Start, Position End, TestResult Action) : StatementNode(Start, End) {
+        public override bool IsTerminal => Action.NextTest is null;
+
         public override TResult Accept<TResult>(AstVisitor<TResult> visitor) {
             return visitor.Visit(this);
         }
 
-        public override bool IsTerminal => Action.NextTest is null;
-
         public override IEnumerable<string> References() {
-            if (Action.NextTest is { } next) {
-                yield return next;
-            }
+            if (Action.NextTest is { } next) yield return next;
         }
     }
 
@@ -317,17 +365,14 @@ public class Day19 : Adventer {
         }
     }
 
-
-    public enum ResultKind {
-        Accept,
-        Reject,
-    }
-
     public readonly record struct TestResult(ResultKind? Result, string? NextTest) {
         public static readonly TestResult Accept = new(ResultKind.Accept, null);
         public static readonly TestResult Reject = new(ResultKind.Reject, null);
         public static readonly TestResult Continue = new(null, null);
-        public static TestResult JumpTo(string nextTest) => new(null, nextTest);
+
+        public static TestResult JumpTo(string nextTest) {
+            return new TestResult(null, nextTest);
+        }
     }
 
     public static class Lang {
@@ -336,17 +381,13 @@ public class Day19 : Adventer {
         public static readonly PrecompilableDesigntimeFarkle<ModuleNode> Designtime;
         public static readonly RuntimeFarkle<ModuleNode> Runtime;
 
-        public static SymbolDocumentInfo FromFile(string path) {
-            return Expression.SymbolDocument(path, LangId, VendorId);
-        }
-
         static Lang() {
             var ident = Terminal.Create(
                 "ident",
                 (d, s) => new {
                     Start = d.StartPosition,
                     End = d.EndPosition,
-                    Value = new string(s),
+                    Value = new string(s)
                 },
                 Regex.FromRegexString(@"[a-z][a-z]+")
             );
@@ -366,7 +407,7 @@ public class Day19 : Adventer {
                 (d, s) => new {
                     Start = d.StartPosition,
                     End = d.EndPosition,
-                    Value = int.Parse(s),
+                    Value = int.Parse(s)
                 },
                 Regex.FromRegexString("[0-9]+")
             );
@@ -375,7 +416,7 @@ public class Day19 : Adventer {
                 (d, s) => new {
                     Start = d.StartPosition,
                     End = d.EndPosition,
-                    Value = ComparisonKind.LessThan,
+                    Value = ComparisonKind.LessThan
                 },
                 Regex.Literal('<')
             );
@@ -384,7 +425,7 @@ public class Day19 : Adventer {
                 (d, s) => new {
                     Start = d.StartPosition,
                     End = d.EndPosition,
-                    Value = ComparisonKind.GreaterThan,
+                    Value = ComparisonKind.GreaterThan
                 },
                 Regex.Literal('>')
             );
@@ -406,7 +447,7 @@ public class Day19 : Adventer {
                 (d, s) => new {
                     Start = d.StartPosition,
                     End = d.EndPosition,
-                    Value = new string(s),
+                    Value = new string(s)
                 },
                 Regex.OneOf("xmas")
             );
@@ -468,44 +509,53 @@ public class Day19 : Adventer {
                 .MarkForPrecompile();
             Runtime = Designtime.Build();
         }
+
+        public static SymbolDocumentInfo FromFile(string path) {
+            return Expression.SymbolDocument(path, LangId, VendorId);
+        }
     }
 
     public readonly record struct Bound(int Min, int Max) {
         public const int MaxValue = 4000;
         public const int MinValue = 1;
         public static readonly Bound Empty = new(0, 0);
-        public bool Contains(int value) => value >= Min && value <= Max;
+
         public static readonly Bound Start = new(1, 4000);
         public int Size => Math.Max(0, Max - Min + 1);
 
-        public static Bound AtLeast(int min) => new(min, MaxValue);
-        public static Bound AtMost(int max) => new(MinValue, max);
+        public bool Contains(int value) {
+            return value >= Min && value <= Max;
+        }
+
+        public static Bound AtLeast(int min) {
+            return new Bound(min, MaxValue);
+        }
+
+        public static Bound AtMost(int max) {
+            return new Bound(MinValue, max);
+        }
 
         public Bound Merge(Bound that) {
-            return new Bound(Math.Max(this.Min, that.Min), Math.Min(this.Max, that.Max));
+            return new Bound(Math.Max(Min, that.Min), Math.Min(Max, that.Max));
         }
     }
 
     public readonly record struct Bounds(Bound X, Bound M, Bound A, Bound S) {
         public static readonly Bounds Start = new(Bound.Start, Bound.Start, Bound.Start, Bound.Start);
         public static readonly Bounds Empty = new(Bound.Empty, Bound.Empty, Bound.Empty, Bound.Empty);
-        public long Size => (long)X.Size * (long)M.Size * (long)A.Size * (long)S.Size;
+        public long Size => X.Size * (long)M.Size * A.Size * S.Size;
 
         public Bounds Merge(Bounds that) {
             return new Bounds(X.Merge(that.X), M.Merge(that.M), A.Merge(that.A), S.Merge(that.S));
         }
     }
-    
-    public delegate long BoundsFunc(Bounds bounds);
-    
+
     public class BoundsDetector : AstVisitor<BoundsFunc> {
         private Dictionary<string, BoundsFunc> PartBounds { get; } = new();
         private IReadOnlyDictionary<string, TestNode> Tests { get; set; } = new Dictionary<string, TestNode>();
 
         private BoundsFunc GetBounds(string name) {
-            if (PartBounds.TryGetValue(name, out var bounds)) {
-                return bounds;
-            }
+            if (PartBounds.TryGetValue(name, out var bounds)) return bounds;
 
             bounds = Tests[name].Accept(this);
             PartBounds.Add(name, bounds);
@@ -518,15 +568,12 @@ public class Day19 : Adventer {
         }
 
         public override BoundsFunc Visit(TestNode node) {
-            if (PartBounds.TryGetValue(node.Name, out var boundsTest)) {
-                return boundsTest;
-            }
+            if (PartBounds.TryGetValue(node.Name, out var boundsTest)) return boundsTest;
 
             return bounds => {
-
                 var currentBounds = bounds;
                 var total = 0L;
-                foreach (var statement in node.Statements) {
+                foreach (var statement in node.Statements)
                     switch (statement) {
                         case ConditionTestNode c:
                             var accepted = c.Accepted(currentBounds);
@@ -538,10 +585,8 @@ public class Day19 : Adventer {
                             total += statement.Accept(this)(currentBounds);
                             break;
                     }
-                }
-                
+
                 return total;
-                
             };
         }
 
@@ -570,44 +615,13 @@ public class Day19 : Adventer {
         }
 
         public override BoundsFunc Visit(ActionNode node) {
-            if (node.Action.NextTest is not null) {
-                return GetBounds(node.Action.NextTest);
-            }
-            
+            if (node.Action.NextTest is not null) return GetBounds(node.Action.NextTest);
+
             return node.Action.Result switch {
                 ResultKind.Accept => bounds => bounds.Size,
                 ResultKind.Reject => _ => 0,
-                _ => throw new UnreachableException(),
+                _ => throw new UnreachableException()
             };
         }
-    }
-
-    private ModuleNode problem;
-    private Func<Part, ResultKind> part1;
-
-    protected override void InternalOnLoad() {
-        var result = Lang.Runtime.Parse(Input.Text);
-        if (result.IsError) {
-            throw new Exception(result.ErrorValue.ToString());
-        }
-
-        problem = result.ResultValue;
-        var compiler = new Part1Compiler(Lang.FromFile("19.txt"));
-        part1 = compiler.Compile(problem).Compile();
-    }
-
-    protected override object InternalPart1() {
-        return problem.Parts
-            .Select(s => s.Part)
-            .Where(s => part1(s) == ResultKind.Accept)
-            .Sum(p => p.Value());
-    }
-
-    protected override object InternalPart2() {
-        var bounds = Bounds.Start;
-        var detector = new BoundsDetector();
-        var boundsFunc = detector.Visit(problem);
-        var total = boundsFunc(bounds);
-        return total;
     }
 }

@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC.Support - ImmutableLinkedHashSet.cs
 // Copyright (C) 2023 Nicholas
 // 
@@ -14,6 +15,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #endregion
 
 using System.Collections;
@@ -21,18 +23,11 @@ using System.Collections.Immutable;
 
 namespace AoC.Support;
 
-public sealed class ImmutableOrderedHashSet<TItem>: IImmutableSet<TItem> {
+public sealed class ImmutableOrderedHashSet<TItem> : IImmutableSet<TItem> {
+    public static readonly ImmutableOrderedHashSet<TItem> Empty = new();
     private readonly ImmutableList<TItem> list;
     private readonly ImmutableHashSet<TItem> set;
-    
-    public IEqualityComparer<TItem> EqualityComparer => set.KeyComparer;
-    
-    public static readonly ImmutableOrderedHashSet<TItem> Empty = new();
-    
-    public ImmutableOrderedHashSet<TItem> WithComparer(IEqualityComparer<TItem>? equalityComparer) {
-        return (ImmutableOrderedHashSet<TItem>) (new ImmutableOrderedHashSet<TItem>(equalityComparer)).Union(this);
-    }
-    
+
     private ImmutableOrderedHashSet(IEqualityComparer<TItem>? equalityComparer = null) {
         list = ImmutableList<TItem>.Empty;
         set = ImmutableHashSet<TItem>.Empty.WithComparer(equalityComparer);
@@ -42,6 +37,8 @@ public sealed class ImmutableOrderedHashSet<TItem>: IImmutableSet<TItem> {
         this.list = list;
         this.set = set;
     }
+
+    public IEqualityComparer<TItem> EqualityComparer => set.KeyComparer;
 
 
     public IEnumerator<TItem> GetEnumerator() {
@@ -54,30 +51,8 @@ public sealed class ImmutableOrderedHashSet<TItem>: IImmutableSet<TItem> {
 
     public int Count => list.Count;
 
-    private ImmutableOrderedHashSet<TItem> InternalAdd(TItem value) {
-        var newSet = set.Add(value);
-        if (newSet.Count == set.Count) {
-            return this;
-        }
-        var newList = list.Add(value);
-        return new ImmutableOrderedHashSet<TItem>(list: newList, set: newSet);
-    }
-    
-    private ImmutableOrderedHashSet<TItem> InternalRemove(TItem value) {
-        var newSet = set.Remove(value);
-        if (newSet.Count == set.Count) {
-            return this;
-        }
-        var newList = list.Remove(value, EqualityComparer);
-        return new ImmutableOrderedHashSet<TItem>(list: newList, set: newSet);
-    }
-    
     IImmutableSet<TItem> IImmutableSet<TItem>.Add(TItem value) {
         return Add(value);
-    }
-    
-    public ImmutableOrderedHashSet<TItem> Add(TItem value) {
-        return InternalAdd(value);
     }
 
     public IImmutableSet<TItem> Clear() {
@@ -91,25 +66,18 @@ public sealed class ImmutableOrderedHashSet<TItem>: IImmutableSet<TItem> {
     IImmutableSet<TItem> IImmutableSet<TItem>.Except(IEnumerable<TItem> other) {
         IReadOnlyCollection<TItem> otherList = other as IImmutableSet<TItem> ?? other.ToImmutableHashSet();
         var newSet = set.Except(otherList);
-        if (newSet.Count == set.Count) {
-            return this;
-        }
+        if (newSet.Count == set.Count) return this;
+
         var newList = list.RemoveAll(otherList.Contains);
-        return new ImmutableOrderedHashSet<TItem>(list: newList, set: newSet);
-    }
-    
-    public ImmutableOrderedHashSet<TItem> Except(IEnumerable<TItem> other) {
-        return (ImmutableOrderedHashSet<TItem>) ((IImmutableSet<TItem>) this).Except(other);
+        return new ImmutableOrderedHashSet<TItem>(newList, newSet);
     }
 
     public IImmutableSet<TItem> Intersect(IEnumerable<TItem> other) {
         var newSet = set.Intersect(other);
-        if (newSet.Count == set.Count) {
-            return this;
-        }
-        
+        if (newSet.Count == set.Count) return this;
+
         var newList = list.RemoveAll(item => !newSet.Contains(item));
-        return new ImmutableOrderedHashSet<TItem>(list: newList, set: newSet);
+        return new ImmutableOrderedHashSet<TItem>(newList, newSet);
     }
 
     public bool IsProperSubsetOf(IEnumerable<TItem> other) {
@@ -135,10 +103,6 @@ public sealed class ImmutableOrderedHashSet<TItem>: IImmutableSet<TItem> {
     IImmutableSet<TItem> IImmutableSet<TItem>.Remove(TItem value) {
         return InternalRemove(value);
     }
-    
-    public ImmutableOrderedHashSet<TItem> Remove(TItem value) {
-        return InternalRemove(value);
-    }
 
     public bool SetEquals(IEnumerable<TItem> other) {
         return set.SetEquals(other);
@@ -146,11 +110,10 @@ public sealed class ImmutableOrderedHashSet<TItem>: IImmutableSet<TItem> {
 
     public IImmutableSet<TItem> SymmetricExcept(IEnumerable<TItem> other) {
         var newSet = set.SymmetricExcept(other);
-        if (newSet.Count == set.Count) {
-            return this;
-        }
+        if (newSet.Count == set.Count) return this;
+
         var newList = list.RemoveAll(item => !newSet.Contains(item));
-        return new ImmutableOrderedHashSet<TItem>(list: newList, set: newSet);
+        return new ImmutableOrderedHashSet<TItem>(newList, newSet);
     }
 
     public bool TryGetValue(TItem equalValue, out TItem actualValue) {
@@ -160,17 +123,48 @@ public sealed class ImmutableOrderedHashSet<TItem>: IImmutableSet<TItem> {
     IImmutableSet<TItem> IImmutableSet<TItem>.Union(IEnumerable<TItem> other) {
         return Union(other);
     }
-    
+
+    public ImmutableOrderedHashSet<TItem> WithComparer(IEqualityComparer<TItem>? equalityComparer) {
+        return (ImmutableOrderedHashSet<TItem>)new ImmutableOrderedHashSet<TItem>(equalityComparer).Union(this);
+    }
+
+    private ImmutableOrderedHashSet<TItem> InternalAdd(TItem value) {
+        var newSet = set.Add(value);
+        if (newSet.Count == set.Count) return this;
+
+        var newList = list.Add(value);
+        return new ImmutableOrderedHashSet<TItem>(newList, newSet);
+    }
+
+    private ImmutableOrderedHashSet<TItem> InternalRemove(TItem value) {
+        var newSet = set.Remove(value);
+        if (newSet.Count == set.Count) return this;
+
+        var newList = list.Remove(value, EqualityComparer);
+        return new ImmutableOrderedHashSet<TItem>(newList, newSet);
+    }
+
+    public ImmutableOrderedHashSet<TItem> Add(TItem value) {
+        return InternalAdd(value);
+    }
+
+    public ImmutableOrderedHashSet<TItem> Except(IEnumerable<TItem> other) {
+        return (ImmutableOrderedHashSet<TItem>)((IImmutableSet<TItem>)this).Except(other);
+    }
+
+    public ImmutableOrderedHashSet<TItem> Remove(TItem value) {
+        return InternalRemove(value);
+    }
+
     public ImmutableOrderedHashSet<TItem> Union(IEnumerable<TItem> other) {
         var otherSet = other as IImmutableSet<TItem> ?? other.ToImmutableHashSet();
         var newSet = set.Union(otherSet);
-        if (newSet.Count == set.Count) {
-            return this;
-        }
+        if (newSet.Count == set.Count) return this;
+
         var newList = list.AddRange(otherSet);
-        return new ImmutableOrderedHashSet<TItem>(list: newList, set: newSet);
+        return new ImmutableOrderedHashSet<TItem>(newList, newSet);
     }
-    
+
     public bool SequenceEqual(IEnumerable<TItem> other) {
         return list.SequenceEqual(other);
     }
@@ -182,7 +176,7 @@ public sealed class ImmutableOrderedHashSet<TItem>: IImmutableSet<TItem> {
     public bool Equals(ImmutableOrderedHashSet<TItem> immutableOrderedHashSet) {
         return set.Count == immutableOrderedHashSet.Count && set.SetEquals(immutableOrderedHashSet);
     }
-    
+
     public override int GetHashCode() {
         return set.GetHashCode();
     }

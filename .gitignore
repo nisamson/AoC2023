@@ -5,4 +5,5 @@ riderModule.iml
 /_ReSharper.Caches/
 AoC2023/Saved.json
 AoC2023/20*/Inputs/
-!*.user
+.idea/
+*.user

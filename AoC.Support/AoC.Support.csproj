@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
-        <LangVersion>12</LangVersion>
+        <TargetFramework>net9.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
@@ -11,9 +11,9 @@
         <DebugType>pdbonly</DebugType>
         <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
-    
+
     <ItemGroup>
-        <PackageReference Include="CommunityToolkit.HighPerformance" Version="8.2.2"/>
+        <PackageReference Include="CommunityToolkit.HighPerformance" Version="8.3.2" />
         <PackageReference Include="ILGPU" Version="1.5.1"/>
         <PackageReference Include="ILGPU.Algorithms" Version="1.5.1"/>
         <PackageReference Include="MathNet.Numerics" Version="5.0.0"/>
@@ -21,7 +21,7 @@
         <PackageReference Include="MathNet.Numerics.Providers.CUDA" Version="5.0.0"/>
         <PackageReference Include="NetTopologySuite" Version="2.5.0"/>
         <PackageReference Include="QuikGraph" Version="2.5.0"/>
-        <PackageReference Include="QuikGraph.Graphviz" Version="2.5.0" />
+        <PackageReference Include="QuikGraph.Graphviz" Version="2.5.0"/>
         <PackageReference Include="VDS.Common" Version="2.0.0"/>
     </ItemGroup>
 

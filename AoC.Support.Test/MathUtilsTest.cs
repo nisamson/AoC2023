@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC.Support.Test - MathUtilsTest.cs
 // Copyright (C) 2023 Nicholas
 // 
@@ -14,34 +15,27 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#endregion
 
-using AoC.Support;
+#endregion
 
 namespace AoC.Support.Test;
 
 [TestFixture]
 [TestOf(typeof(MathUtils))]
 public class MathUtilsTest {
-
     [Test]
-    public void GeometricMeanZero()
-    {
-        Assert.Multiple(() =>
-        {
-            Assert.That(() => MathUtils.GeometricMean<double>(), Throws.InstanceOf(typeof(ArgumentOutOfRangeException)));
-
-            Assert.That(() =>
-            {
-                ReadOnlySpan<int> span = stackalloc int[0];
-                MathUtils.GeometricMean(span);
-            },
+    public void GeometricMeanZero() {
+        Assert.Multiple(() => {
+            Assert.That(() => MathUtils.GeometricMean<double>(),
                 Throws.InstanceOf(typeof(ArgumentOutOfRangeException)));
 
-            Assert.That(() =>
-            {
-                Enumerable.Empty<int>().GeometricMean();
-            },
+            Assert.That(() => {
+                    ReadOnlySpan<int> span = stackalloc int[0];
+                    MathUtils.GeometricMean(span);
+                },
+                Throws.InstanceOf(typeof(ArgumentOutOfRangeException)));
+
+            Assert.That(() => { Enumerable.Empty<int>().GeometricMean(); },
                 Throws.InstanceOf(typeof(ArgumentOutOfRangeException)));
         });
     }

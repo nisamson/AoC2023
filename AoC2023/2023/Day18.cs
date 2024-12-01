@@ -18,13 +18,11 @@
 
 #endregion
 
-using System.Collections;
 using System.Drawing;
 using System.Globalization;
 using AoC.Support;
 using MathNet.Numerics.LinearAlgebra.Double;
 using NetTopologySuite.Geometries;
-using NetTopologySuite.Operation.Overlay;
 using QuikGraph;
 using Point = NetTopologySuite.Geometries.Point;
 
@@ -33,6 +31,40 @@ namespace AoC2023._2023;
 using Vertex = Vertex<int>;
 
 public class Day18 : Adventer {
+    private Problem problem;
+
+    public Day18() {
+        Bag["test"] =
+            """
+            R 6 (#70c710)
+            D 5 (#0dc571)
+            L 2 (#5713f0)
+            D 2 (#d2c081)
+            R 2 (#59c680)
+            D 2 (#411b91)
+            L 5 (#8ceee2)
+            U 2 (#caa173)
+            L 1 (#1b58a2)
+            U 2 (#caa171)
+            R 2 (#7807d2)
+            U 3 (#a77fa3)
+            L 2 (#015232)
+            U 2 (#7a21e3)
+            """;
+    }
+
+    protected override void InternalOnLoad() {
+        problem = new Problem(Input.Lines);
+    }
+
+    protected override object InternalPart1() {
+        return problem.Part1();
+    }
+
+    protected override object InternalPart2() {
+        throw new NotImplementedException();
+    }
+
     public record Tag(Color Color) {
         public Color Color = Color;
     }
@@ -40,9 +72,9 @@ public class Day18 : Adventer {
     public record Movement(Direction Direction, int Length, Color Color);
 
     public class Problem {
-        private BidirectionalGraph<Vertex, TaggedEdge<Vertex, Tag>> graph;
-        private Polygon polygon;
-        private List<Movement> movements;
+        private readonly BidirectionalGraph<Vertex, TaggedEdge<Vertex, Tag>> graph;
+        private readonly List<Movement> movements;
+        private readonly Polygon polygon;
 
         public Problem(string[] input) {
             graph = new BidirectionalGraph<Vertex, TaggedEdge<Vertex, Tag>>();
@@ -119,50 +151,12 @@ public class Day18 : Adventer {
             while (frontier.Count > 0) {
                 var current = frontier.First();
                 frontier.Remove(current);
-                if (!visited.Add(current)) {
-                    continue;
-                }
+                if (!visited.Add(current)) continue;
 
-                foreach (var neighbor in current.GetNeighbors()) {
-                    frontier.Add(neighbor);
-                }
+                foreach (var neighbor in current.GetNeighbors()) frontier.Add(neighbor);
             }
 
             return visited.Count;
         }
-    }
-
-    private Problem problem;
-
-    protected override void InternalOnLoad() {
-        problem = new Problem(Input.Lines);
-    }
-
-    protected override object InternalPart1() {
-        return problem.Part1();
-    }
-
-    protected override object InternalPart2() {
-        throw new NotImplementedException();
-    }
-
-    public Day18() {
-        Bag["test"] =
-            """
-            R 6 (#70c710)
-            D 5 (#0dc571)
-            L 2 (#5713f0)
-            D 2 (#d2c081)
-            R 2 (#59c680)
-            D 2 (#411b91)
-            L 5 (#8ceee2)
-            U 2 (#caa173)
-            L 1 (#1b58a2)
-            U 2 (#caa171)
-            R 2 (#7807d2)
-            U 3 (#a77fa3)
-            L 2 (#015232)
-            U 2 (#7a21e3)
-            """;
     }
 }

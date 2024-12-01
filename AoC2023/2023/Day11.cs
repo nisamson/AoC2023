@@ -20,13 +20,13 @@
 
 using System.Text;
 using AoC.Support;
-using MathNet.Numerics.LinearAlgebra;
-using MathNet.Numerics.LinearAlgebra.Single;
 
 namespace AoC2023._2023;
+
 using Vertex = Vertex<long>;
 
 public class Day11 : Adventer {
+    private Problem problem;
 
     public Day11() {
         Bag["test"] = """
@@ -42,45 +42,81 @@ public class Day11 : Adventer {
                       #...#.....
                       """;
     }
+
+    private Problem ClonedProblem() {
+        lock (problem) {
+            return problem.Clone();
+        }
+    }
+
+    protected override void InternalOnLoad() {
+        problem = new Problem(Input.Lines);
+    }
+
+
+    protected override object InternalPart1() {
+        var problem = ClonedProblem();
+        problem.ExpandStep();
+        var galaxies = problem.Galaxies;
+        var totalDistances = (long)0;
+        for (var i = 0; i < galaxies.Count; i++) {
+            var g1 = galaxies[i];
+            totalDistances += galaxies.Skip(i + 1).Select(g2 => g1.Coords.ManhattanDistanceTo(g2.Coords)).Sum();
+        }
+
+        return totalDistances;
+    }
+
+    protected override object InternalPart2() {
+        var problem = ClonedProblem();
+        problem.ExpandStep(1000000);
+        var galaxies = problem.Galaxies;
+        var totalDistances = (long)0;
+        for (var i = 0; i < galaxies.Count; i++) {
+            var g1 = galaxies[i];
+            totalDistances += galaxies.Skip(i + 1).Select(g2 => g1.Coords.ManhattanDistanceTo(g2.Coords)).Sum();
+        }
+
+        return totalDistances;
+    }
+
     public record Galaxy {
+        public Galaxy(int id = default, Vertex coords = default) {
+            Id = id;
+            Coords = coords;
+        }
+
         public int Id { get; init; }
         public Vertex Coords { get; set; }
 
         public long X {
             get => Coords.X;
-            set => Coords = Coords with {X = value};
+            set => Coords = Coords with { X = value };
         }
 
         public long Y {
             get => Coords.Y;
-            set => Coords = Coords with {Y = value};
-        }
-
-        public Galaxy(int id = default, Vertex coords = default) { 
-            Id = id;
-            Coords = coords;
+            set => Coords = Coords with { Y = value };
         }
     }
 
     public class Problem {
         private List<Galaxy> galaxies = [];
-        
-        public IReadOnlyList<Galaxy> Galaxies => galaxies;
 
         public Problem(IReadOnlyList<string> input) {
             var width = input[0].Length;
             var height = input.Count;
             var id = 0;
             for (var y = 0; y < height; y++) {
-                for (var x = 0; x < width; x++) {
-                    if (input[y][x] == '#') {
+                for (var x = 0; x < width; x++)
+                    if (input[y][x] == '#')
                         galaxies.Add(new Galaxy(id++, new Vertex(x, y)));
-                    }
-                }
             }
         }
-        
-        private Problem() {}
+
+        private Problem() { }
+
+        public IReadOnlyList<Galaxy> Galaxies => galaxies;
 
         public void ExpandStep(int expansionFactor = 2) {
             var seenColumns = new SortedList<int, byte>();
@@ -101,10 +137,10 @@ public class Day11 : Adventer {
                 galaxy.Coords = new Vertex(newX, newY);
             }
         }
-        
+
         public Problem Clone() {
             var clone = new Problem {
-                galaxies = galaxies.Select(galaxy => new Galaxy(galaxy.Id, galaxy.Coords)).ToList(),
+                galaxies = galaxies.Select(galaxy => new Galaxy(galaxy.Id, galaxy.Coords)).ToList()
             };
             return clone;
         }
@@ -115,53 +151,13 @@ public class Day11 : Adventer {
             var height = galaxies.Max(galaxy => galaxy.Y) + 1;
             for (var y = 0; y < height; y++) {
                 var line = new char[width];
-                for (var x = 0; x < width; x++) {
+                for (var x = 0; x < width; x++)
                     line[x] = galaxies.Any(galaxy => galaxy.X == x && galaxy.Y == y) ? '#' : '.';
-                }
 
                 sb.AppendLine(new string(line));
             }
 
             return sb.ToString();
         }
-    }
-    
-    private Problem problem;
-
-    private Problem ClonedProblem() {
-        lock (problem) {
-            return problem.Clone();
-        }
-    }
-
-    protected override void InternalOnLoad() {
-        problem = new Problem(Input.Lines);
-    }
-
-
-    protected override object InternalPart1() {
-        var problem = ClonedProblem();
-        problem.ExpandStep();
-        var galaxies = problem.Galaxies;
-        var totalDistances = (long) 0;
-        for (var i = 0; i < galaxies.Count; i++) {
-            var g1 = galaxies[i];
-            totalDistances += galaxies.Skip(i + 1).Select(g2 => g1.Coords.ManhattanDistanceTo(g2.Coords)).Sum();
-        }
-
-        return totalDistances;
-    }
-
-    protected override object InternalPart2() {
-        var problem = ClonedProblem();
-        problem.ExpandStep(1000000);
-        var galaxies = problem.Galaxies;
-        var totalDistances = (long) 0;
-        for (var i = 0; i < galaxies.Count; i++) {
-            var g1 = galaxies[i];
-            totalDistances += galaxies.Skip(i + 1).Select(g2 => g1.Coords.ManhattanDistanceTo(g2.Coords)).Sum();
-        }
-
-        return totalDistances;
     }
 }

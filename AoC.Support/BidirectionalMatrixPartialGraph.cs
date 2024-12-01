@@ -18,27 +18,39 @@
 
 #endregion
 
-using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using AoC.Support.Matrix;
 using ILGPU;
-using ILGPU.Runtime;
-using MathNet.Numerics.LinearAlgebra;
-using MathNet.Numerics.LinearAlgebra.Single;
 using QuikGraph;
 
 namespace AoC.Support;
 
 // Represents a subset of a bidirectional matrix graph.
 public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirectionalGraph<TVertex, TEdge>,
-                                                               ICloneable where TEdge : IEdge<TVertex> where TVertex : notnull {
+    ICloneable where TEdge : IEdge<TVertex> where TVertex : notnull {
+    // public BidirectionalMatrixSubsetGraph<TVertex, TEdge> ComputeTransitiveClosure() {
+    //     Matrix<float> oldM;
+    //     var m = matrix;
+    //     using var acc = new MathAccelerator();
+    //     do {
+    //         oldM = m;
+    //         m = acc.MultipleMatrixRowMajorTiling(m, m);
+    //         m.ToBooleanInplace();
+    //     } while (!m.Equals(oldM));
+    //
+    //     var res = new BidirectionalMatrixSubsetGraph<TVertex, TEdge>(this);
+    //     m.CopyTo(res.matrix);
+    //     return res;
+    // }
+
+    private const int UseGpuThreshold = 250;
     private readonly Func<TVertex, TVertex, TEdge> edgeFactory;
-    private readonly TVertex?[] vertices;
-    private readonly Dictionary<TVertex, int> vertexIndices;
-    private readonly IEqualityComparer<TVertex> vertexComparer;
-    private readonly BitMatrix matrix;
     private readonly Queue<int> emptyIndices = new();
+    private readonly BitMatrix matrix;
+    private readonly IEqualityComparer<TVertex> vertexComparer;
+    private readonly Dictionary<TVertex, int> vertexIndices;
+    private readonly TVertex?[] vertices;
 
     public BidirectionalMatrixPartialGraph(int vertexCount,
         Func<TVertex, TVertex, TEdge> edgeFactory,
@@ -49,17 +61,20 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
         this.vertexComparer = vertexComparer ?? EqualityComparer<TVertex>.Default;
         matrix = new BitMatrix(new Index2D(vertexCount));
         emptyIndices.EnsureCapacity(vertexCount);
-        for (var i = 0; i < vertexCount; i++) {
-            emptyIndices.Enqueue(i);
-        }
+        for (var i = 0; i < vertexCount; i++) emptyIndices.Enqueue(i);
     }
 
-    private BidirectionalMatrixPartialGraph(BidirectionalMatrixPartialGraph<TVertex, TEdge> other, BitMatrix? matrix = null) {
+    private BidirectionalMatrixPartialGraph(BidirectionalMatrixPartialGraph<TVertex, TEdge> other,
+        BitMatrix? matrix = null) {
         edgeFactory = other.edgeFactory;
         vertices = other.vertices.ToArray();
         vertexIndices = other.vertexIndices.ToDictionary(kvp => kvp.Key, kvp => kvp.Value, vertexComparer);
         vertexComparer = other.vertexComparer;
         this.matrix = matrix ?? other.matrix.Clone();
+    }
+
+    public object Clone() {
+        return new BidirectionalMatrixPartialGraph<TVertex, TEdge>(this);
     }
 
 
@@ -70,26 +85,6 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
         return vertexIndices.ContainsKey(vertex);
     }
 
-    private int GetVertexIndex(TVertex vertex) {
-        if (!vertexIndices.TryGetValue(vertex, out var index)) {
-            throw new ArgumentException($"Vertex {vertex} is not in the graph");
-        }
-
-        return index;
-    }
-
-    private TVertex? GetVertex(int index) {
-        return vertices[index];
-    }
-
-    private int? GetNextEmptyIndex() {
-        if (emptyIndices.TryDequeue(out var index)) {
-            return index;
-        }
-
-        return null;
-    }
-
     public bool IsOutEdgesEmpty(TVertex vertex) {
         return OutEdges(vertex).FirstOrDefault() == null;
     }
@@ -97,14 +92,6 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
     public int OutDegree(TVertex vertex) {
         var row = GetVertexIndex(vertex);
         return matrix.GetRow(row).CountSetBits();
-    }
-
-    private IEnumerable<int> OutEdgeIndices(int vertexIndex) {
-        for (var i = 0; i < vertices.Length; i++) {
-            if (matrix[vertexIndex, i]) {
-                yield return i;
-            }
-        }
     }
 
     public IEnumerable<TEdge> OutEdges(TVertex vertex) {
@@ -138,7 +125,7 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
             return true;
         }
 
-        edge = default(TEdge)!;
+        edge = default!;
         return false;
     }
 
@@ -179,14 +166,6 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
         return InEdgeIndices(GetVertexIndex(vertex))
             .Select(i => edgeFactory(GetVertex(i)!, vertex));
     }
-    
-    private IEnumerable<int> InEdgeIndices(int vertexIndex) {
-        for (var i = 0; i < vertices.Length; i++) {
-            if (matrix[i, vertexIndex]) {
-                yield return i;
-            }
-        }
-    }
 
     public bool TryGetInEdges(TVertex vertex, [UnscopedRef] out IEnumerable<TEdge> edges) {
         if (vertexIndices.TryGetValue(vertex, out _)) {
@@ -207,10 +186,6 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
         return InDegree(vertex) + OutDegree(vertex);
     }
 
-    public object Clone() {
-        return new BidirectionalMatrixPartialGraph<TVertex, TEdge>(this);
-    }
-
     public void Clear() {
         vertices.Initialize();
         vertexIndices.Clear();
@@ -219,30 +194,22 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
 
     public int RemoveOutEdgeIf(TVertex vertex, EdgePredicate<TVertex, TEdge> predicate) {
         var delEdges = OutEdges(vertex).Where(predicate.Invoke).ToList();
-        foreach (var edge in delEdges) {
-            RemoveEdge(edge);
-        }
+        foreach (var edge in delEdges) RemoveEdge(edge);
 
         return delEdges.Count;
     }
 
     public void ClearOutEdges(TVertex vertex) {
-        foreach (var edge in OutEdges(vertex)) {
-            RemoveEdge(edge);
-        }
+        foreach (var edge in OutEdges(vertex)) RemoveEdge(edge);
     }
 
     public void TrimEdgeExcess() { }
 
     public bool AddVertex(TVertex vertex) {
-        if (vertexIndices.ContainsKey(vertex)) {
-            return false;
-        }
+        if (vertexIndices.ContainsKey(vertex)) return false;
 
         var index = GetNextEmptyIndex();
-        if (index is not { } i) {
-            throw new InvalidOperationException("Graph is full");
-        }
+        if (index is not { } i) throw new InvalidOperationException("Graph is full");
 
         vertices[i] = vertex;
         vertexIndices[vertex] = i;
@@ -255,11 +222,9 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
     }
 
     public bool RemoveVertex(TVertex vertex) {
-        if (!vertexIndices.TryGetValue(vertex, out var index)) {
-            return false;
-        }
+        if (!vertexIndices.TryGetValue(vertex, out var index)) return false;
 
-        vertices[index] = default(TVertex?);
+        vertices[index] = default;
         vertexIndices.Remove(vertex);
         emptyIndices.Enqueue(index);
         VertexRemoved?.Invoke(vertex);
@@ -268,9 +233,7 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
 
     public int RemoveVertexIf(VertexPredicate<TVertex> predicate) {
         var delVertices = Vertices.Where(predicate.Invoke).ToList();
-        foreach (var vertex in delVertices) {
-            RemoveVertex(vertex);
-        }
+        foreach (var vertex in delVertices) RemoveVertex(vertex);
 
         return delVertices.Count;
     }
@@ -281,9 +244,7 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
     public bool AddEdge(TEdge edge) {
         var sourceIndex = GetVertexIndex(edge.Source);
         var targetIndex = GetVertexIndex(edge.Target);
-        if (matrix[sourceIndex, targetIndex]) {
-            return false;
-        }
+        if (matrix[sourceIndex, targetIndex]) return false;
 
         matrix[sourceIndex, targetIndex] = true;
         EdgeAdded?.Invoke(edge);
@@ -297,9 +258,7 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
     public bool RemoveEdge(TEdge edge) {
         var sourceIndex = GetVertexIndex(edge.Source);
         var targetIndex = GetVertexIndex(edge.Target);
-        if (!matrix[sourceIndex, targetIndex]) {
-            return false;
-        }
+        if (!matrix[sourceIndex, targetIndex]) return false;
 
         matrix[sourceIndex, targetIndex] = false;
         EdgeRemoved?.Invoke(edge);
@@ -308,9 +267,7 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
 
     public int RemoveEdgeIf(EdgePredicate<TVertex, TEdge> predicate) {
         var delEdges = Edges.Where(predicate.Invoke).ToList();
-        foreach (var edge in delEdges) {
-            RemoveEdge(edge);
-        }
+        foreach (var edge in delEdges) RemoveEdge(edge);
 
         return delEdges.Count;
     }
@@ -322,9 +279,7 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
         AddVertex(edge.Source);
         AddVertex(edge.Target);
 
-        if (matrix[GetVertexIndex(edge.Source), GetVertexIndex(edge.Target)]) {
-            return false;
-        }
+        if (matrix[GetVertexIndex(edge.Source), GetVertexIndex(edge.Target)]) return false;
 
         matrix[GetVertexIndex(edge.Source), GetVertexIndex(edge.Target)] = true;
 
@@ -338,24 +293,49 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
 
     public int RemoveInEdgeIf(TVertex vertex, EdgePredicate<TVertex, TEdge> predicate) {
         var delEdges = InEdges(vertex).Where(predicate.Invoke).ToList();
-        foreach (var edge in delEdges) {
-            RemoveEdge(edge);
-        }
+        foreach (var edge in delEdges) RemoveEdge(edge);
 
         return delEdges.Count;
     }
 
     public void ClearInEdges(TVertex vertex) {
-        foreach (var edge in InEdges(vertex)) {
-            RemoveEdge(edge);
-        }
+        foreach (var edge in InEdges(vertex)) RemoveEdge(edge);
     }
 
     public void ClearEdges(TVertex vertex) {
         ClearInEdges(vertex);
         ClearOutEdges(vertex);
     }
-    
+
+    private int GetVertexIndex(TVertex vertex) {
+        if (!vertexIndices.TryGetValue(vertex, out var index))
+            throw new ArgumentException($"Vertex {vertex} is not in the graph");
+
+        return index;
+    }
+
+    private TVertex? GetVertex(int index) {
+        return vertices[index];
+    }
+
+    private int? GetNextEmptyIndex() {
+        if (emptyIndices.TryDequeue(out var index)) return index;
+
+        return null;
+    }
+
+    private IEnumerable<int> OutEdgeIndices(int vertexIndex) {
+        for (var i = 0; i < vertices.Length; i++)
+            if (matrix[vertexIndex, i])
+                yield return i;
+    }
+
+    private IEnumerable<int> InEdgeIndices(int vertexIndex) {
+        for (var i = 0; i < vertices.Length; i++)
+            if (matrix[i, vertexIndex])
+                yield return i;
+    }
+
     public IEnumerable<TVertex> GetReachableFromWithout(TVertex start, TVertex without) {
         var withoutIndex = GetVertexIndex(without);
         var row = matrix.GetRow(withoutIndex).Clone();
@@ -369,27 +349,10 @@ public class BidirectionalMatrixPartialGraph<TVertex, TEdge> : IMutableBidirecti
         return res;
     }
 
-    // public BidirectionalMatrixSubsetGraph<TVertex, TEdge> ComputeTransitiveClosure() {
-    //     Matrix<float> oldM;
-    //     var m = matrix;
-    //     using var acc = new MathAccelerator();
-    //     do {
-    //         oldM = m;
-    //         m = acc.MultipleMatrixRowMajorTiling(m, m);
-    //         m.ToBooleanInplace();
-    //     } while (!m.Equals(oldM));
-    //
-    //     var res = new BidirectionalMatrixSubsetGraph<TVertex, TEdge>(this);
-    //     m.CopyTo(res.matrix);
-    //     return res;
-    // }
-
-    private const int UseGpuThreshold = 250;
     public BidirectionalMatrixPartialGraph<TVertex, TEdge> ComputeTransitiveClosure() {
-
         using var acc = new MathAccelerator(MathMode.Fast);
         var start = Stopwatch.StartNew();
-        var arr = acc.WarshallReachabilityMatrix(matrix.ToBytes(), true);
+        var arr = acc.WarshallReachabilityMatrix(matrix.ToBytes());
         // // var arr = matrix.ToBytes().CalculateWarshallAlgorithmRowParallel();
         var res = new BidirectionalMatrixPartialGraph<TVertex, TEdge>(this, BitMatrix.FromArray(arr));
         // var res = new BidirectionalMatrixPartialGraph<TVertex, TEdge>(this, ComputeTransitiveClosureMatrix());

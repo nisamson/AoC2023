@@ -1,4 +1,5 @@
 ﻿#region license
+
 // AoC2023 - AoC.Support.Test - KnownPopulationSetTest.cs
 // Copyright (C) 2024 Nicholas
 // 
@@ -14,6 +15,7 @@
 // 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 #endregion
 
 using AoC.Support.Collections;
@@ -23,11 +25,9 @@ namespace AoC.Support.Test.Collections;
 [TestFixture]
 [TestOf(typeof(KnownPopulationSet<>))]
 public class KnownPopulationSetTest {
-
     [Test]
     public void TestProperSubset() {
-        
-        var population = new [] { "a", "b", "c", "d", "e" };
+        var population = new[] { "a", "b", "c", "d", "e" };
         var gen = KnownPopulationSet.CreateGenerator(population);
         var set = gen.CreateSet();
         Assert.That(set, Is.SubsetOf(population)); // empty set is subset of all sets
@@ -44,11 +44,10 @@ public class KnownPopulationSetTest {
         Assert.That(set2.IsProperSubsetOf(set), Is.True);
         Assert.That(set.IsProperSubsetOf(set2), Is.False);
     }
-    
+
     [Test]
     public void TestCount() {
-        
-        var population = new [] { "a", "b", "c", "d", "e" };
+        var population = new[] { "a", "b", "c", "d", "e" };
         var gen = KnownPopulationSet.CreateGenerator(population);
         var set2 = gen.CreateSet(population);
         var set = gen.CreateSet();
@@ -65,7 +64,7 @@ public class KnownPopulationSetTest {
         set.ExceptWith(population);
         Assert.That(set.Count, Is.Zero);
         Assert.That(set2.Count, Is.EqualTo(population.Length));
-        
+
         Assert.That(set2.SetEquals(population));
         Assert.That(set.IsProperSubsetOf(set2));
         set.Add("a");

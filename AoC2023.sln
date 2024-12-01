@@ -6,10 +6,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AoC.Support", "AoC.Support\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AoC.Support.Test", "AoC.Support.Test\AoC.Support.Test.csproj", "{425D1D96-8301-4764-8C84-6594CF440002}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AoC.Scratchpad", "AoC.Scratchpad\AoC.Scratchpad.csproj", "{0CD7194C-9AF5-4E66-9FDB-7D8D052C959C}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AoC.Support.Bench", "AoC.Support.Bench\AoC.Support.Bench.csproj", "{FE12C5EB-0CDB-4672-AA6C-EA65810B1F31}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
