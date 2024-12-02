@@ -6,7 +6,7 @@ using AoC2023._2023;
 Console.OutputEncoding = Encoding.UTF8;
 var solutions = new AdventSolutions();
 // var day = solutions.GetMostRecentDay();
-var day = solutions.GetDay(2024, 1);
+var day = solutions.GetDay(2024, 2);
 await day.DownloadInputAsync();
 
 // day.Bag["part1Steps"] = "3";
@@ -29,6 +29,6 @@ if (day is Day01 d1) d1.PrintNumbers();
 
 //
 //
-// day.Benchmark();
+day.Benchmark();
 
 // solutions.BenchmarkAll();

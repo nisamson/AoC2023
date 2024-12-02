@@ -1,7 +1,6 @@
 ﻿namespace AoC2023._2024;
 
 public class Day01 : Adventer {
-
     private Problem problem = null!;
 
     private const string Test = """
@@ -14,11 +13,11 @@ public class Day01 : Adventer {
                                 """;
 
     private const int TestResult = 11;
-    
+
     private class Problem {
         private List<int> leftList;
         private List<int> rightList;
-        
+
         private Problem() {
             leftList = new();
             rightList = new();
@@ -31,10 +30,10 @@ public class Day01 : Adventer {
                 problem.leftList.Add(int.Parse(parts[0]));
                 problem.rightList.Add(int.Parse(parts[1]));
             }
-            
+
             return problem;
         }
-        
+
         public Problem Clone() {
             var clone = new Problem();
             clone.leftList.AddRange(leftList);
@@ -62,7 +61,7 @@ public class Day01 : Adventer {
     public Day01() {
         Bag["test"] = Test;
     }
-    
+
     protected override void InternalOnLoad() {
         problem = Problem.Create(Input.Lines);
     }
