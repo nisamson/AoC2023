@@ -30,6 +30,7 @@
         <PackageReference Include="QuikGraph.Graphviz" Version="2.5.0"/>
         <PackageReference Include="Rationals" Version="2.3.0"/>
         <PackageReference Include="VDS.Common" Version="2.0.0"/>
+        <PackageReference Include="Pidgin" Version="3.3.0"/>
     </ItemGroup>
 
     <ItemGroup>
