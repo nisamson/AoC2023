@@ -261,6 +261,10 @@ public static class IterUtils {
     public static void EnqueueAll<T>(this Queue<T> queue, IEnumerable<T> items) {
         foreach (var item in items) queue.Enqueue(item);
     }
+    
+    public static T MiddleElement<T>(this IReadOnlyList<T> source) {
+        return source[source.Count / 2];
+    }
 }
 
 public static class MathUtils {
