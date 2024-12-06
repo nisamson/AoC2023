@@ -19,8 +19,11 @@
 #endregion
 
 using System.Collections;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Text;
+using CommunityToolkit.HighPerformance;
 using MathNet.Numerics.LinearAlgebra;
 
 namespace AoC.Support;
@@ -404,7 +407,15 @@ public class Grid<TItem> {
         get => items[x + y * Width];
         set => items[x + y * Width] = value;
     }
-
+    
+    public bool IsInBounds(int x, int y) {
+        return x >= 0 && x < Width && y >= 0 && y < Height;
+    }
+    
+    public bool IsInBounds(Vertex<int> coords) {
+        return IsInBounds(coords.X, coords.Y);
+    }
+    
     public TItem this[Vertex<int> coords] {
         get => this[coords.X, coords.Y];
         set => this[coords.X, coords.Y] = value;
@@ -416,6 +427,44 @@ public class Grid<TItem> {
 
     public StrideSpan<TItem> GetColumn(int x) {
         return new StrideSpan<TItem>(items, Width, x, Height);
+    }
+    
+    public Grid<TItem> Clone() {
+        var clone = new Grid<TItem>(Width, Height);
+        items.CopyTo(clone.items, 0);
+        return clone;
+    }
+    
+    public IEnumerable<(Vertex<int> Coords, TItem Item)> EnumerateIndexed() {
+        for (var y = 0; y < Height; y++) {
+            for (var x = 0; x < Width; x++) {
+                yield return (new Vertex<int>(x, y), this[x, y]);
+            }
+        }
+    }
+    
+    public ReadOnlyMemory2D<TItem> AsMemory2D() {
+        return new(items, Height, Width);
+    }
+    
+    public ReadOnlyMemory<TItem> AsMemory() {
+        return items.AsMemory();
+    }
+
+    public IEnumerable<TItem> RowMajorItems() => items;
+
+    public override string ToString() {
+        var sb = new StringBuilder();
+        for (var y = 0; y < Height; y++) {
+            var row = GetRow(y);
+            foreach (var item in row) {
+                sb.Append(item);
+            }
+
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
     }
 }
 

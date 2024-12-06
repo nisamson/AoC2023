@@ -40,6 +40,26 @@ public static class DirectionExtensions {
             _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction")
         };
     }
+    
+    public static Direction TurnLeft(this Direction direction) {
+        return direction switch {
+            Direction.Up => Direction.Left,
+            Direction.Left => Direction.Down,
+            Direction.Down => Direction.Right,
+            Direction.Right => Direction.Up,
+            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction")
+        };
+    }
+    
+    public static Direction TurnRight(this Direction direction) {
+        return direction switch {
+            Direction.Up => Direction.Right,
+            Direction.Right => Direction.Down,
+            Direction.Down => Direction.Left,
+            Direction.Left => Direction.Up,
+            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction")
+        };
+    }
 
     public static Vertex<TNumber> ToVertex<TNumber>(this Direction direction) where TNumber : INumber<TNumber> {
         return direction switch {
@@ -159,10 +179,10 @@ public readonly record struct Vertex<TNumber>(TNumber X, TNumber Y) where TNumbe
 
     public Vertex<TNumber> GetNeighbor(Direction direction) {
         return direction switch {
-            Direction.Up => new Vertex<TNumber>(X, Y - TNumber.One),
-            Direction.Down => new Vertex<TNumber>(X, Y + TNumber.One),
-            Direction.Left => new Vertex<TNumber>(X - TNumber.One, Y),
-            Direction.Right => new Vertex<TNumber>(X + TNumber.One, Y),
+            Direction.Up => this with { Y = Y - TNumber.One },
+            Direction.Down => this with { Y = Y + TNumber.One },
+            Direction.Left => this with { X = X - TNumber.One },
+            Direction.Right => this with { X = X + TNumber.One },
             _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction")
         };
     }

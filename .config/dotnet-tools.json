@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "farkle.tools": {
+      "version": "6.5.2",
+      "commands": [
+        "farkle"
+      ],
+      "rollForward": false
+    }
+  }
+}
