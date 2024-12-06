@@ -466,6 +466,14 @@ public class Grid<TItem> {
 
         return sb.ToString();
     }
+
+    public void CopyFrom(Grid<TItem> other) {
+        if (other.Width != Width || other.Height != Height) {
+            throw new ArgumentException("Grids must have the same dimensions");
+        }
+        
+        other.items.CopyTo(items, 0);
+    }
 }
 
 public readonly struct StrideSpan<TItem> : IEnumerable<TItem> {

@@ -100,9 +100,17 @@ public class Day06 : Adventer {
         }
 
         public int FindCyclePositions() {
+            var guardStart = GuardPosition;
+            var originalGrid = Grid.Clone();
+            Part1();
+            GuardPosition = guardStart;
+            GuardDirection = Direction.Up;
             var candidateCoords = Grid.EnumerateIndexed()
-                .Where(t => t.Item is { IsObstacle: false, Visited: false });
-            return candidateCoords.Count(c => HasCycleWithObstacleAt(c.Coords));
+                .Where(t => t.Item is { IsObstacle: false, Visited: true } && t.Coords != guardStart)
+                .ToList();
+            Grid.CopyFrom(originalGrid);
+            return candidateCoords.AsParallel()
+                .Count(c => HasCycleWithObstacleAt(c.Coords));
         }
         
         private void PrintGrid() {
