@@ -6,7 +6,7 @@ using AoC2023._2023;
 Console.OutputEncoding = Encoding.UTF8;
 var solutions = new AdventSolutions();
 // var day = solutions.GetMostRecentDay();
-var day = solutions.GetDay(2024, 6);
+var day = solutions.GetDay(2024, 7);
 await day.DownloadInputAsync();
 
 // day.Bag["part1Steps"] = "3";
@@ -21,7 +21,7 @@ await day.CheckPart2Async();
 //     // for (var i = 0; i < 100000; i++) {
 //     //     advent.DoPart1();
 //     // }
-//     for (var i = 0; i < 100000; i++) {
+//     for (var i = 0; i < 1000; i++) {
 //         advent.DoPart2();
 //     }
 // }

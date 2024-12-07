@@ -409,7 +409,7 @@ public class Grid<TItem> {
     }
     
     public bool IsInBounds(int x, int y) {
-        return x >= 0 && x < Width && y >= 0 && y < Height;
+        return x >= 0 & x < Width & y >= 0 & y < Height;
     }
     
     public bool IsInBounds(Vertex<int> coords) {

@@ -18,6 +18,7 @@
 
 #endregion
 
+using System.Collections.Immutable;
 using System.Numerics;
 using NetTopologySuite.Geometries;
 
@@ -41,24 +42,16 @@ public static class DirectionExtensions {
         };
     }
     
+    private static readonly Direction[] Directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
+    private static readonly Direction[] Left = [Direction.Left, Direction.Right, Direction.Down, Direction.Up];
+    private static readonly Direction[] Right = [Direction.Right, Direction.Left, Direction.Up, Direction.Down];
+    
     public static Direction TurnLeft(this Direction direction) {
-        return direction switch {
-            Direction.Up => Direction.Left,
-            Direction.Left => Direction.Down,
-            Direction.Down => Direction.Right,
-            Direction.Right => Direction.Up,
-            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction")
-        };
+        return Left[(int)direction];
     }
     
     public static Direction TurnRight(this Direction direction) {
-        return direction switch {
-            Direction.Up => Direction.Right,
-            Direction.Right => Direction.Down,
-            Direction.Down => Direction.Left,
-            Direction.Left => Direction.Up,
-            _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction")
-        };
+        return Right[(int)direction];
     }
 
     public static Vertex<TNumber> ToVertex<TNumber>(this Direction direction) where TNumber : INumber<TNumber> {
