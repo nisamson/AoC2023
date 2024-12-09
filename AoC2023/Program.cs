@@ -21,7 +21,7 @@ await day.CheckPart2Async();
 //     // for (var i = 0; i < 100000; i++) {
 //     //     advent.DoPart1();
 //     // }
-//     for (var i = 0; i < 1000; i++) {
+//     for (var i = 0; i < 200; i++) {
 //         advent.DoPart2();
 //     }
 // }

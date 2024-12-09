@@ -19,7 +19,6 @@
 using System.ComponentModel;
 using AoC.Support.Numerics;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Order;
 
 namespace AoC.Support.Bench.Numerics;
 

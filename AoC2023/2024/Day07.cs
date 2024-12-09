@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using AoC.Support.Numerics;
 using Pidgin;
 using static Pidgin.Parser<char>;
 using static Pidgin.Parser;
@@ -6,39 +7,50 @@ using static Pidgin.Parser;
 namespace AoC2023._2024;
 
 public class Day07 : Adventer {
-    private readonly record struct Equation {
-        public required long Result { get; init; }
-        public required ImmutableList<long> Operands { get; init; }
 
-        public bool IsSolvableWithOperations(IReadOnlyList<Func<long, long, long>> operations) {
-            if (Operands.IsEmpty) {
-                return false;
-            }
+    private readonly ref struct EquationSolver {
+        public required long Current { get; init; }
+        public required ReadOnlySpan<long> Remaining { get; init; }
 
-            var start = new Equation() {
-                Result = Operands[0],
-                Operands = Operands.RemoveAt(0)
-            };
-            return start.IsSolvableWithOperations(operations, Result);
-        }
-
-        public bool IsSolvableWithOperations(IReadOnlyList<Func<long, long, long>> operations, long expectedResult) {
-            if (Operands.IsEmpty) {
-                return Result == expectedResult;
+        public bool IsSolvableWithRemainingOperands(ReadOnlySpan<Func<long, long, long>> operations,
+            long expectedResult) {
+            
+            if (Remaining.IsEmpty) {
+                return Current == expectedResult;
             }
             
-            if (Result > expectedResult) {
+            if (Current > expectedResult) {
+                return false;
+            }
+            
+            var curResult = Current;
+            var front = Remaining[0];
+            var back = Remaining[1..];
+            foreach (var op in operations) {
+                if (new EquationSolver { Current = op(curResult, front), Remaining = back }
+                    .IsSolvableWithRemainingOperands(operations, expectedResult)) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+    }
+    
+    private readonly record struct Equation {
+        public required long Result { get; init; }
+        public required ImmutableArray<long> Operands { get; init; }
+
+        public bool IsSolvableWithOperations(ReadOnlySpan<Func<long, long, long>> operations) {
+            if (Operands.IsEmpty) {
                 return false;
             }
 
-            var curResult = Result;
-            var front = Operands[0];
-            var back = Operands.RemoveAt(0);
-            return operations
-                .Any(op => new Equation {
-                    Result = op(curResult, front),
-                    Operands = back
-                }.IsSolvableWithOperations(operations, expectedResult));
+            var start = new EquationSolver {
+                Current = Operands[0],
+                Remaining = Operands.AsSpan()[1..]
+            };
+            return start.IsSolvableWithRemainingOperands(operations, Result);
         }
 
         public override string ToString() {
@@ -78,18 +90,19 @@ public class Day07 : Adventer {
 
         public static ImmutableArray<Func<long, long, long>> Part2Operations { get; } = [
             ..Operations,
-            (a, b) => long.Parse($"{a}{b}")
+            (a, b) => a.Concatenate(b, 10),
         ];
 
         public long Part1() {
             return Equations.AsParallel()
-                .Where(eq => eq.IsSolvableWithOperations(Operations))
+                .Where(eq => eq.IsSolvableWithOperations(Operations.AsSpan()))
                 .Sum(eq => eq.Result);
         }
 
         public long Part2() {
-            return Equations.AsParallel()
-                .Where(eq => eq.IsSolvableWithOperations(Part2Operations))
+            return Equations
+                .AsParallel()
+                .Where(eq => eq.IsSolvableWithOperations(Part2Operations.AsSpan()))
                 .Sum(eq => eq.Result);
         }
     }
