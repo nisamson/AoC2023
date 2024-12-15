@@ -7,6 +7,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <UserSecretsId>77a428ac-67e2-4da2-8bf8-6a777dbf2d74</UserSecretsId>
+        <NoWarn>CS8618</NoWarn>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -33,6 +34,10 @@
         <PackageReference Include="VDS.Common" Version="2.0.0"/>
         <PackageReference Include="Pidgin" Version="3.3.0"/>
         <PackageReference Include="Sigourney.Build" Version="0.4.2-intermediate-output-path-fix.5" />
+        <PackageReference Include="Akade.IndexedSet" Version="1.3.0"/>
+        <PackageReference Include="OpenCvSharp4" Version="4.10.0.20241108"/>
+        <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.10.0.20241108"/>
+        <PackageReference Include="System.IO.Hashing" Version="9.0.0"/>
     </ItemGroup>
 
     <ItemGroup>

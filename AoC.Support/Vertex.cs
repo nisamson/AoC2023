@@ -41,15 +41,15 @@ public static class DirectionExtensions {
             _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction")
         };
     }
-    
+
     private static readonly Direction[] Directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
     private static readonly Direction[] Left = [Direction.Left, Direction.Right, Direction.Down, Direction.Up];
     private static readonly Direction[] Right = [Direction.Right, Direction.Left, Direction.Up, Direction.Down];
-    
+
     public static Direction TurnLeft(this Direction direction) {
         return Left[(int)direction];
     }
-    
+
     public static Direction TurnRight(this Direction direction) {
         return Right[(int)direction];
     }
@@ -152,6 +152,10 @@ public readonly record struct Vertex<TNumber>(TNumber X, TNumber Y) where TNumbe
         return new Vertex<TNumber>(left.X - right, left.Y - right);
     }
 
+    public static Vertex<TNumber> operator -(Vertex<TNumber> left) {
+        return new Vertex<TNumber>(-left.X, -left.Y);
+    }
+
     public static Vertex<TNumber> operator *(Vertex<TNumber> left, TNumber right) {
         return new Vertex<TNumber>(left.X * right, left.Y * right);
     }
@@ -214,6 +218,18 @@ public readonly record struct Vertex<TNumber>(TNumber X, TNumber Y) where TNumbe
         yield return GetNeighbor(Direction.Down);
         yield return GetNeighbor(Direction.Left);
         yield return GetNeighbor(Direction.Right);
+    }
+
+
+    public IEnumerable<Vertex<TNumber>> GetDiagonals() {
+        yield return new Vertex<TNumber>(X - TNumber.One, Y - TNumber.One);
+        yield return new Vertex<TNumber>(X - TNumber.One, Y + TNumber.One);
+        yield return new Vertex<TNumber>(X + TNumber.One, Y - TNumber.One);
+        yield return new Vertex<TNumber>(X + TNumber.One, Y + TNumber.One);
+    }
+
+    public IEnumerable<Vertex<TNumber>> GetNeighborsWithDiagonals() {
+        return GetNeighbors().Concat(GetDiagonals());
     }
 
     public static TNumber RowMajorIndex(Vertex<TNumber> v, TNumber width) {

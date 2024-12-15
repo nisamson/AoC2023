@@ -114,6 +114,22 @@ public static class IterUtils {
             for (var j = i + 1; j < source.Count; j++) yield return (source[i], source[j]);
         }
     }
+    
+    public static TValue GetOrNew<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key) where TValue : new() {
+        if (dict.TryGetValue(key, out var value)) return value;
+
+        var newValue = new TValue();
+        dict[key] = newValue;
+        return newValue;
+    }
+    
+    public static TValue GetOrCreate<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key, Func<TValue> factory) {
+        if (dict.TryGetValue(key, out var value)) return value;
+
+        var newValue = factory();
+        dict[key] = newValue;
+        return newValue;
+    }
 
     public static IEnumerable<IEnumerable<string>> SplitByEmptyLines(this string[] source) {
         var i = 0;

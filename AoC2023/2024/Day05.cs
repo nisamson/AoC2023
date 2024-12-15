@@ -158,17 +158,17 @@ public class Day05 : Adventer {
             return new Update(builder.ToImmutable());
         }
 
-        public static bool TryParse(ReadOnlySpan<char> s, IFormatProvider? provider, out Update result) {
+        public static bool TryParse(ReadOnlySpan<char> s, IFormatProvider? provider, out Update? result) {
             try {
                 result = Parse(s, provider);
                 return true;
             } catch {
-                result = default;
+                result = null;
                 return false;
             }
         }
 
-        public static bool TryParse(ReadOnlySpan<char> s, out Update result) {
+        public static bool TryParse(ReadOnlySpan<char> s, out Update? result) {
             return TryParse(s, null, out result);
         }
 
