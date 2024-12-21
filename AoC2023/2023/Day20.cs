@@ -22,7 +22,7 @@ using System.Runtime.CompilerServices;
 using AoC.Support;
 using QuikGraph;
 
-namespace AoC2023;
+namespace AoC2023._2023;
 
 public class Day20 : Adventer {
     public enum Pulse {

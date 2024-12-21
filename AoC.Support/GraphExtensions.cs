@@ -73,3 +73,12 @@ public static class GraphExtensions {
         }
     }
 }
+
+public readonly record struct ValueEdge<TVertex>(TVertex Source, TVertex Target)
+    : IEdge<TVertex> where TVertex : notnull {
+    
+    public override string ToString() => $"{Source} -> {Target}";
+    public ValueEdge<TVertex> Reversed() => new(Target, Source);
+    public static ValueEdge<TVertex> Create(TVertex source, TVertex target) => new(source, target);
+    
+}

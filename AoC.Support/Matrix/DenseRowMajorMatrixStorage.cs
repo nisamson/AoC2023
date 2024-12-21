@@ -19,12 +19,10 @@
 #endregion
 
 using CommunityToolkit.HighPerformance;
-using MathNet.Numerics.LinearAlgebra;
-using MathNet.Numerics.LinearAlgebra.Storage;
 
-namespace AoC.Support;
+namespace AoC.Support.Matrix;
 
-public class DenseRowMajorMatrixStorage<T> : MatrixStorage<T> where T : struct, IEquatable<T>, IFormattable {
+public class DenseRowMajorMatrixStorage<T> : MathNet.Numerics.LinearAlgebra.Storage.MatrixStorage<T> where T : struct, IEquatable<T>, IFormattable {
     private readonly T[,] data;
 
     public DenseRowMajorMatrixStorage(int rowCount, int columnCount, T v = default) : base(rowCount, columnCount) {
@@ -42,12 +40,12 @@ public class DenseRowMajorMatrixStorage<T> : MatrixStorage<T> where T : struct, 
     public override bool IsDense => true;
     public override bool IsFullyMutable => true;
 
-    public static DenseRowMajorMatrixStorage<T> OfStorage(MatrixStorage<T> matrix) {
+    public static DenseRowMajorMatrixStorage<T> OfStorage(MathNet.Numerics.LinearAlgebra.Storage.MatrixStorage<T> matrix) {
         // using Clone skips initialization and just copies the data directly
         return new DenseRowMajorMatrixStorage<T>(matrix.AsArray().Clone() as T[,] ?? matrix.ToArray());
     }
 
-    public static DenseRowMajorMatrixStorage<T> OfMatrix(Matrix<T> matrix) {
+    public static DenseRowMajorMatrixStorage<T> OfMatrix(MathNet.Numerics.LinearAlgebra.Matrix<T> matrix) {
         return OfStorage(matrix.Storage);
     }
 
@@ -77,12 +75,12 @@ public class DenseRowMajorMatrixStorage<T> : MatrixStorage<T> where T : struct, 
 }
 
 public static class DenseRowMajorMatrixStorage {
-    public static DenseRowMajorMatrixStorage<T> OfMatrix<T>(Matrix<T> matrix)
+    public static DenseRowMajorMatrixStorage<T> OfMatrix<T>(MathNet.Numerics.LinearAlgebra.Matrix<T> matrix)
         where T : struct, IEquatable<T>, IFormattable {
         return DenseRowMajorMatrixStorage<T>.OfMatrix(matrix);
     }
 
-    public static DenseRowMajorMatrixStorage<T> OfStorage<T>(MatrixStorage<T> matrix)
+    public static DenseRowMajorMatrixStorage<T> OfStorage<T>(MathNet.Numerics.LinearAlgebra.Storage.MatrixStorage<T> matrix)
         where T : struct, IEquatable<T>, IFormattable {
         return DenseRowMajorMatrixStorage<T>.OfStorage(matrix);
     }

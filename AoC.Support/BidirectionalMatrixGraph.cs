@@ -361,3 +361,23 @@ public class BidirectionalMatrixGraph<TVertex, TEdge> : IBidirectionalGraph<TVer
         return ContainsEdge(a, b) && !ContainsEdge(b, a);
     }
 }
+
+public static class BidirectionalMatrixGraph {
+    public static BidirectionalMatrixGraph<Vertex, Edge<Vertex>> ForVertices(int rows,
+        int columns,
+        bool columnMajor = true,
+        bool sparse = true) {
+        var indexToVertex = columnMajor switch {
+            true => i => Vertex.FromColumnMajorIndex(i, rows),
+            false => (Func<int, Vertex>)(i => Vertex.FromRowMajorIndex(i, columns))
+        };
+
+        var vertexToIndex = columnMajor switch {
+            true => v => v.ColumnMajorIndex(rows),
+            false => (Func<Vertex, int>)(v => v.RowMajorIndex(columns))
+        };
+
+        return new BidirectionalMatrixGraph<Vertex, Edge<Vertex>>(rows * columns, vertexToIndex, indexToVertex,
+            (s, t) => new Edge<Vertex>(s, t), sparse);
+    }
+}

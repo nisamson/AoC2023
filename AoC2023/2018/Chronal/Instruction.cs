@@ -1,36 +1,21 @@
-﻿using Farkle;
-using Farkle.Builder;
-using Pidgin;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Text.RegularExpressions;
 
-namespace AoC2023._2019.Chronal;
+namespace AoC2023._2018.Chronal;
 
-public readonly record struct Instruction {
-    //
-    // public static readonly RuntimeFarkle<Instruction> Parser;
-    //
-    // private static readonly PrecompilableDesigntimeFarkle<Instruction> Designtime;
+[method: SetsRequiredMembers]
+public readonly partial record struct Instruction(InstructionKind Kind, int A, int B, int C) : ISpanParsable<Instruction> {
+
+    [GeneratedRegex(@"(\d+) (\d+) (\d+) (\d+)")]
+    private static partial Regex InstructionRegex();
     
-    static Instruction() {
-        
-    }
-    
-    public required InstructionKind Kind { get; init;  }
-    public required int A { get; init; }
-    public required int B { get; init; }
-    public required int C { get; init; }
+    public required InstructionKind Kind { get; init;  } = Kind;
+    public required int A { get; init; } = A;
+    public required int B { get; init; } = B;
+    public required int C { get; init; } = C;
 
-    public Instruction() { }
-
-    public Instruction(int opCode, int a, int b, int c) {
-        Kind = FromOpcode(opCode);
-        A = a;
-        B = b;
-        C = c;
-    }
-
-    public Instruction(InstructionKind kind, int a, int b, int c) {
-        
-    }
+    [SetsRequiredMembers]
+    public Instruction(int opCode, int a, int b, int c) : this(FromOpcode(opCode), a, b, c) { }
 
     public static InstructionKind FromOpcode(int opCode) {
         throw new NotImplementedException();
@@ -56,6 +41,40 @@ public readonly record struct Instruction {
     ];
     
     public static ReadOnlyMemory<InstructionKind> ValidInstructionKinds => ValidInstructions;
+
+    public override string ToString() {
+        return $"{Kind.AsString()} {A} {B} {C}";
+    }
+
+    public static Instruction Parse(string s, IFormatProvider? provider = null) {
+        return Parse(s.AsSpan());
+    }
+    public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out Instruction result) {
+        return TryParse(s.AsSpan(), provider, out result);
+    }
+    public static Instruction Parse(ReadOnlySpan<char> s, IFormatProvider? provider = null) {
+        if (!InstructionRegex().IsMatch(s)) {
+            throw new FormatException("Invalid instruction format");
+        }
+        
+        Span<Range> ranges = stackalloc Range[4];
+        s.Split(ranges, ' ');
+        var opCode = int.Parse(s[ranges[0]]);
+        var a = int.Parse(s[ranges[1]]);
+        var b = int.Parse(s[ranges[2]]);
+        var c = int.Parse(s[ranges[3]]);
+        return new Instruction(opCode, a, b, c);
+    }
+    
+    public static bool TryParse(ReadOnlySpan<char> s, IFormatProvider? provider, out Instruction result) {
+        try {
+            result = Parse(s, provider);
+            return true;
+        } catch {
+            result = default;
+            return false;
+        }
+    }
 }
 
 [Flags]
@@ -95,7 +114,7 @@ public static class InstructionHelpers {
     public static bool IsRegister(this InstructionKind kind) => kind.HasFlag(InstructionKind.RegisterA | InstructionKind.RegisterB);
     public static bool IsTest(this InstructionKind kind) => (kind & InstructionKind.Test) != InstructionKind.None;
 
-    public static string ToString(this InstructionKind kind) {
+    public static string AsString(this InstructionKind kind) {
         return kind switch {
             InstructionKind.Addr => "addr",
             InstructionKind.Addi => "addi",
